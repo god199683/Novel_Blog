@@ -1,35 +1,72 @@
-const loginForm = document.getElementById('login-form');
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인 - Novel-Blog</title>
+    <link rel="stylesheet" href="./css/style.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./js/supabase-config.js"></script>
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo" onclick="location.href='index.html'">Novel-Blog</div>
+        <nav>
+            <a href="index.html" class="nav-link">홈으로</a>
+        </nav>
+    </header>
 
-loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
+    <main class="hero-section">
+        <div class="auth-container">
+            <h2 class="auth-title">로그인</h2>
+            <p style="margin-bottom: 20px; color: #666;">작가님의 아이디로 접속하세요.</p>
+            
+            <form id="login-form">
+                <div class="input-group">
+                    <input type="text" id="login-username" placeholder="아이디" required>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="login-password" placeholder="비밀번호" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; border-radius: 10px;">로그인</button>
+            </form>
 
-    const username = document.getElementById('login-username').value;
-    const password = document.getElementById('login-password').value;
+            <p class="auth-footer" style="margin-top: 20px; font-size: 0.9rem; color: #888;">
+                계정이 없으신가요? <a href="signup.html" style="color: #87CEEB; text-decoration: none; font-weight: bold;">회원가입</a>
+            </p>
+        </div>
+    </main>
 
-    // 가입 시 설정한 것과 동일한 도메인 필수!
-    const fakeEmail = username + "@novel.blog";
+    <script>
+        const loginForm = document.getElementById('login-form');
 
-    console.log("로그인 시도 이메일:", fakeEmail);
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
 
-    try {
-        const { data, error } = await window.supabaseClient.auth.signInWithPassword({
-            email: fakeEmail,
-            password: password,
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+
+            // 아이디 기반 가짜 이메일 생성
+            const fakeEmail = username + "@novel.blog";
+
+            try {
+                // Supabase 로그인 시도
+                const { data, error } = await window.supabaseClient.auth.signInWithPassword({
+                    email: fakeEmail,
+                    password: password,
+                });
+
+                if (error) throw error;
+
+                alert(username + " 작가님, 반갑습니다!");
+                window.location.href = 'index.html'; 
+
+            } catch (err) {
+                console.error("로그인 에러:", err.message);
+                alert("로그인 실패: 아이디 또는 비밀번호를 확인하세요.");
+            }
         });
-
-        if (error) throw error;
-
-        console.log("로그인 성공 데이터:", data);
-        alert(username + " 작가님, 환영합니다!");
-        window.location.href = 'index.html'; 
-
-    } catch (err) {
-        console.error("로그인 상세 에러:", err);
-        // 에러 메시지에 따라 사용자에게 힌트 제공
-        if (err.message.includes("confirm")) {
-            alert("이메일 인증이 필요하거나 설정에서 인증 기능이 켜져 있습니다.");
-        } else {
-            alert("로그인 실패: 아이디나 비밀번호를 다시 확인하세요.");
-        }
-    }
-});
+    </script>
+</body>
+</html>

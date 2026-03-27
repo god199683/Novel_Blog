@@ -1,72 +1,151 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>로그인 - Novel-Blog</title>
-    <link rel="stylesheet" href="./css/style.css">
-    
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./js/supabase-config.js"></script>
-</head>
-<body>
-    <header class="navbar">
-        <div class="logo" onclick="location.href='index.html'">Novel-Blog</div>
-        <nav>
-            <a href="index.html" class="nav-link">홈으로</a>
-        </nav>
-    </header>
+/* 1. 기본 초기화 및 변수 설정 */
+:root {
+    --primary-color: #87CEEB; /* 스카이블루 */
+    --primary-hover: #5ebde6;
+    --bg-color: #FFFFFF;
+    --text-main: #333333;
+    --text-sub: #666666;
+    --border-color: #eeeeee;
+}
 
-    <main class="hero-section">
-        <div class="auth-container">
-            <h2 class="auth-title">로그인</h2>
-            <p style="margin-bottom: 20px; color: #666;">작가님의 아이디로 접속하세요.</p>
-            
-            <form id="login-form">
-                <div class="input-group">
-                    <input type="text" id="login-username" placeholder="아이디" required>
-                </div>
-                <div class="input-group">
-                    <input type="password" id="login-password" placeholder="비밀번호" required>
-                </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%; border-radius: 10px;">로그인</button>
-            </form>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-            <p class="auth-footer" style="margin-top: 20px; font-size: 0.9rem; color: #888;">
-                계정이 없으신가요? <a href="signup.html" style="color: #87CEEB; text-decoration: none; font-weight: bold;">회원가입</a>
-            </p>
-        </div>
-    </main>
+body {
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
 
-    <script>
-        const loginForm = document.getElementById('login-form');
+/* 2. 네비게이션 바 (상단) */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 50px;
+    background: #fff;
+    border-bottom: 1px solid var(--border-color);
+}
 
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+.logo {
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--primary-color);
+    cursor: pointer;
+}
 
-            const username = document.getElementById('login-username').value;
-            const password = document.getElementById('login-password').value;
+.nav-link {
+    text-decoration: none;
+    color: var(--text-sub);
+    font-weight: 500;
+    transition: color 0.3s;
+}
 
-            // 아이디 기반 가짜 이메일 생성
-            const fakeEmail = username + "@novel.blog";
+.nav-link:hover {
+    color: var(--primary-color);
+}
 
-            try {
-                // Supabase 로그인 시도
-                const { data, error } = await window.supabaseClient.auth.signInWithPassword({
-                    email: fakeEmail,
-                    password: password,
-                });
+/* 3. 메인 히어로 섹션 (중앙 정렬) */
+.hero-section {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 40px 20px;
+}
 
-                if (error) throw error;
+.hero-content {
+    max-width: 800px;
+}
 
-                alert(username + " 작가님, 반갑습니다!");
-                window.location.href = 'index.html'; 
+.hero-title {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 20px;
+    color: var(--text-main);
+    line-height: 1.3;
+}
 
-            } catch (err) {
-                console.error("로그인 에러:", err.message);
-                alert("로그인 실패: 아이디 또는 비밀번호를 확인하세요.");
-            }
-        });
-    </script>
-</body>
-</html>
+.hero-subtitle {
+    font-size: 1.2rem;
+    color: var(--text-sub);
+    margin-bottom: 40px;
+}
+
+/* 4. 버튼 공통 스타일 */
+.btn {
+    display: inline-block;
+    padding: 16px 40px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 50px;
+    transition: all 0.3s;
+    cursor: pointer;
+    border: none;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+    box-shadow: 0 4px 15px rgba(135, 206, 235, 0.3);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-2px);
+}
+
+/* 5. 인증 컨테이너 (로그인/회원가입용) */
+.auth-container {
+    width: 100%;
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 40px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    text-align: center;
+}
+
+.auth-title {
+    margin-bottom: 25px;
+    color: var(--primary-color);
+    font-size: 1.8rem;
+}
+
+/* 6. 입력창 스타일 */
+.input-group {
+    margin-bottom: 15px;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    outline: none;
+}
+
+.input-group input:focus {
+    border-color: var(--primary-color);
+}
+
+/* 7. 프로필 이미지 미리보기 */
+.profile-preview {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--primary-color);
+    margin-bottom: 10px;
+    cursor: pointer;
+}
