@@ -10,40 +10,28 @@
     <style>
         body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         .viewer-wrapper { display: flex; flex: 1; overflow: hidden; position: relative; background: #f9f9f9; }
-        .navbar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 10px 40px; }
+        .navbar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 10px 40px; border-bottom: 1px solid #eee; background: #fff; }
         .logo { grid-column: 2; font-size: 24px; font-weight: bold; color: #87CEEB; cursor: pointer; }
-        #auth-nav { grid-column: 3; justify-self: end; min-height: 40px; }
-        .sidebar {
-            width: 280px; background: #fff; border-right: 1px solid #eee;
-            display: flex; flex-direction: column; 
-            transition: width 0.3s ease, opacity 0.2s ease;
-            overflow: hidden; position: relative; flex-shrink: 0; height: 100%;
-        }
+        #auth-nav { grid-column: 3; justify-self: end; min-height: 40px; display: flex; align-items: center; }
+        
+        /* 사이드바 및 버튼 */
+        .sidebar { width: 280px; background: #fff; border-right: 1px solid #eee; display: flex; flex-direction: column; transition: width 0.3s ease, opacity 0.2s ease; overflow: hidden; position: relative; flex-shrink: 0; height: 100%; }
         .sidebar.collapsed { width: 0; border: none; opacity: 0; pointer-events: none; transition: none; }
-        #sidebar-toggle {
-            position: absolute; left: 280px; top: 10px; z-index: 100;
-            cursor: pointer; background: #87CEEB; color: #fff; border: none;
-            padding: 8px 12px; border-radius: 0 5px 5px 0;
-            transition: left 0.3s ease; box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-        }
+        #sidebar-toggle { position: absolute; left: 280px; top: 10px; z-index: 100; cursor: pointer; background: #87CEEB; color: #fff; border: none; padding: 8px 12px; border-radius: 0 5px 5px 0; transition: left 0.3s ease; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
         .sidebar.collapsed + #sidebar-toggle { left: 0; transition: none; }
 
-        .list-dropdown {
-            position: absolute; top: 45px; right: 10px; width: 220px;
-            background: #fff; border: 1px solid #eee; border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: none;
-            flex-direction: column; z-index: 1100; padding: 10px 0;
-        }
-        .list-dropdown.active { display: flex; }
+        /* 드롭다운 스타일 */
+        .list-dropdown, .dropdown-menu { position: absolute; background: #fff; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: none; flex-direction: column; z-index: 1100; padding: 10px 0; }
+        .list-dropdown.active { display: flex; top: 45px; right: 10px; width: 220px; }
+        .dropdown-menu { top: 100%; right: 0; width: 170px; }
         .list-group-title { padding: 8px 15px; font-size: 0.75rem; color: #aaa; font-weight: bold; background: #fafafa; border-top: 1px solid #f0f0f0; }
-        .list-group-title:first-child { border-top: none; }
-        .list-item { padding: 8px 20px; font-size: 0.85rem; color: #444; cursor: pointer; transition: 0.2s; }
-        .list-item:hover { background: #f0faff; color: #87CEEB; }
+        .list-item, .dropdown-item { padding: 8px 20px; font-size: 0.85rem; color: #444; cursor: pointer; transition: 0.2s; text-decoration: none; }
+        .list-item:hover, .dropdown-item:hover { background: #f0faff; color: #87CEEB; }
 
+        /* 레이아웃 및 드래그 */
         .content-container { flex: 1; padding: 40px; overflow-y: auto; display: flex; justify-content: center; align-items: flex-start; }
         .reader-box { width: 100%; max-width: 750px; background: #fff; padding: 60px 50px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); min-height: 90%; margin-bottom: 40px; }
         .tree-container { flex: 1; overflow-y: auto; padding: 5px 10px; display: flex; flex-direction: column; }
-        .tree-group { list-style: none; padding-left: 12px; min-height: 20px; margin: 0; }
         .item-content { display: flex; align-items: center; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 0.85rem; position: relative; }
         .item-content.dragging { opacity: 0.3; border: 1px dashed #87CEEB; }
         .drag-over-line::after { content: ""; position: absolute; left: 0; bottom: -2px; width: 100%; height: 2px; background: #87CEEB; }
@@ -56,20 +44,20 @@
         <div class="logo" onclick="location.reload()">Novel-Blog</div>
         <nav id="auth-nav">
             <script>
-                // 캐시된 프로필 즉시 렌더링 (로그인 전 공백 방지)
+                /* [핵심] 페이지 로드 즉시 캐시 확인하여 강제 출력 */
                 (function() {
                     const cached = localStorage.getItem('userProfile');
                     if (cached) {
                         const p = JSON.parse(cached);
                         document.write(`
                             <div id="user-menu-trigger" style="display:flex; align-items:center; gap:10px; cursor:pointer; position:relative;">
-                                <img src="${p.avatar || ''}" style="width:32px; height:32px; border-radius:50%; border:2px solid #87CEEB;" onerror="this.src='https://via.placeholder.com/32'">
-                                <span style="font-weight:600;">${p.nickname} 작가님 ▼</span>
-                                <div id="user-dropdown" class="dropdown-menu" style="position:absolute; top:100%; right:0; width:170px; background:#fff; border:1px solid #eee; display:none; flex-direction:column; padding:5px 0; border-radius:8px; box-shadow:0 5px 15px rgba(0,0,0,0.1); z-index:1000;">
-                                    <div class="dropdown-item" id="go-away-btn" style="padding:12px 20px; cursor:pointer;">자리비움</div>
-                                    <a href="account.html" style="padding:12px 20px; text-decoration:none; color:#444; display:block;">계정관리</a>
+                                <img src="${p.avatar || ''}" id="nav-avatar" style="width:32px; height:32px; border-radius:50%; border:2px solid #87CEEB;" onerror="this.src='https://via.placeholder.com/32'">
+                                <span id="nav-nickname" style="font-weight:600;">${p.nickname} 작가님 ▼</span>
+                                <div id="user-dropdown" class="dropdown-menu">
+                                    <div class="dropdown-item" id="go-away-btn">자리비움</div>
+                                    <a href="account.html" class="dropdown-item">계정관리</a>
                                     <hr style="border:0; border-top:1px solid #eee; margin:5px 0;">
-                                    <div class="dropdown-item" id="logout-btn" style="padding:12px 20px; color:#ff6b6b; cursor:pointer;">로그아웃</div>
+                                    <div class="dropdown-item" id="logout-btn" style="color:#ff6b6b;">로그아웃</div>
                                 </div>
                             </div>
                         `);
@@ -96,22 +84,14 @@
             <div style="padding: 12px 15px; border-bottom: 1px solid #eee; font-weight: bold; color: #87CEEB; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; position: relative;">
                 <span>Novel</span>
                 <span id="list-icon-trigger" style="cursor:pointer; font-size: 1.1rem;">📋</span>
-                
                 <div id="list-menu-dropdown" class="list-dropdown">
                     <div class="list-group-title">추가</div>
                     <div class="list-item" onclick="addFolder()">폴더 추가</div>
                     <div class="list-group-title">도구 상자</div>
-                    <div class="list-item" onclick="menuAction('선택 모드')">선택 모드</div>
-                    <div class="list-item" onclick="menuAction('전체 선택')">전체 선택</div>
-                    <div class="list-item" onclick="menuAction('선택 해제')">선택 해제</div>
-                    <div class="list-item" onclick="menuAction('전체 삭제')">전체 삭제</div>
-                    <div class="list-item" onclick="menuAction('선택 항목 삭제')">선택 항목 삭제</div>
-                    <div class="list-item" onclick="menuAction('오름차순 정렬')">오름차순 정렬</div>
-                    <div class="list-item" onclick="menuAction('내림차순 정렬')">내림차순 정렬</div>
-                    <div class="list-group-title">내보내기 및 불러오기</div>
-                    <div class="list-item" onclick="menuAction('전체 내보내기')">전체 내보내기</div>
-                    <div class="list-item" onclick="menuAction('선택 항목 내보내기')">선택 항목 내보내기</div>
-                    <div class="list-item" onclick="menuAction('불러오기')">불러오기</div>
+                    <div class="list-item" onclick="alert('전체 선택')">전체 선택</div>
+                    <div class="list-item" onclick="alert('전체 삭제')">전체 삭제</div>
+                    <div class="list-group-title">내보내기</div>
+                    <div class="list-item" onclick="alert('내보내기')">전체 내보내기</div>
                 </div>
             </div>
             <div class="tree-container" id="tree-dropzone">
@@ -130,7 +110,7 @@
                     <h2 id="viewer-title" style="color: #87CEEB;">제목</h2>
                     <h3 id="viewer-subtitle" style="font-size: 1rem; color: #888; margin-top: 5px; font-weight: normal;">부제목</h3>
                 </div>
-                <div id="viewer-content" style="line-height: 2.2; white-space: pre-wrap; font-size: 1.1rem; color: #444;">Supabase 연결 및 프로필 반영 기능이 수정되었습니다.</div>
+                <div id="viewer-content" style="line-height: 2.2; white-space: pre-wrap; font-size: 1.1rem; color: #444;">새로고침 시 프로필이 유지됩니다.</div>
             </article>
         </main>
     </div>
@@ -144,8 +124,6 @@
             document.getElementById('viewer-content').innerText = c;
         }
 
-        function menuAction(name) { alert(`${name} 기능을 실행합니다.`); document.getElementById('list-menu-dropdown').classList.remove('active'); }
-
         function addFolder() {
             const name = prompt("폴더 이름:", "새 폴더");
             if (!name) return;
@@ -154,34 +132,20 @@
             li.innerHTML = `<div class="item-content folder">📁 ${name}</div><ul class="tree-group"></ul>`;
             document.getElementById('main-group').appendChild(li);
             attachDragEvents(li);
-            document.getElementById('list-menu-dropdown').classList.remove('active');
         }
 
         function attachDragEvents(item) {
             const content = item.querySelector('.item-content');
             item.addEventListener('dragstart', (e) => { draggedItem = item; e.stopPropagation(); content.classList.add('dragging'); });
             item.addEventListener('dragend', () => { content.classList.remove('dragging'); draggedItem = null; });
-            item.addEventListener('dragover', (e) => {
-                e.preventDefault(); e.stopPropagation();
-                if (content.classList.contains('folder')) content.classList.add('folder-over');
-                else content.classList.add('drag-over-line');
-            });
+            item.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); if (content.classList.contains('folder')) content.classList.add('folder-over'); else content.classList.add('drag-over-line'); });
             item.addEventListener('dragleave', () => { content.classList.remove('folder-over'); content.classList.remove('drag-over-line'); });
-            item.addEventListener('drop', (e) => {
-                e.preventDefault(); e.stopPropagation();
-                content.classList.remove('folder-over'); content.classList.remove('drag-over-line');
-                if (content.classList.contains('folder')) item.querySelector('.tree-group').appendChild(draggedItem);
-                else item.parentNode.insertBefore(draggedItem, item.nextSibling);
-            });
+            item.addEventListener('drop', (e) => { e.preventDefault(); e.stopPropagation(); content.classList.remove('folder-over'); content.classList.remove('drag-over-line'); if (content.classList.contains('folder')) item.querySelector('.tree-group').appendChild(draggedItem); else item.parentNode.insertBefore(draggedItem, item.nextSibling); });
         }
 
-        // [핵심] Supabase 연결 및 프로필 즉시 로드 로직
-        const initApp = async () => {
-            // supabaseClient가 로드될 때까지 잠시 대기
-            if (!window.supabaseClient) {
-                setTimeout(initApp, 100);
-                return;
-            }
+        // [핵심] 앱 초기화 로직 보강
+        async function checkUser() {
+            if (!window.supabaseClient) { setTimeout(checkUser, 50); return; }
 
             const { data: { user } } = await window.supabaseClient.auth.getUser();
             
@@ -189,47 +153,44 @@
                 const nickname = user.user_metadata.display_name || user.user_metadata.username || "작가";
                 const avatar = user.user_metadata.avatar_url || "";
                 
-                // 최신 정보 캐시 업데이트
+                // 최신 데이터로 캐시 갱신
                 localStorage.setItem('userProfile', JSON.stringify({ nickname, avatar }));
+                
+                // 이미 그려진 UI 업데이트 (불일치 방지)
+                const nickEl = document.getElementById('nav-nickname');
+                const avaEl = document.getElementById('nav-avatar');
+                if (nickEl) nickEl.innerText = `${nickname} 작가님 ▼`;
+                if (avaEl) avaEl.src = avatar;
 
-                // auth-nav가 비어있다면(첫 로그인 등) 즉시 생성
-                const nav = document.getElementById('auth-nav');
-                if (!document.getElementById('user-menu-trigger')) {
-                    nav.innerHTML = `
-                        <div id="user-menu-trigger" style="display:flex; align-items:center; gap:10px; cursor:pointer; position:relative;">
-                            <img src="${avatar}" style="width:32px; height:32px; border-radius:50%; border:2px solid #87CEEB;" onerror="this.src='https://via.placeholder.com/32'">
-                            <span style="font-weight:600;">${nickname} 작가님 ▼</span>
-                            <div id="user-dropdown" class="dropdown-menu" style="position:absolute; top:100%; right:0; width:170px; background:#fff; border:1px solid #eee; display:none; flex-direction:column; padding:5px 0; border-radius:8px; box-shadow:0 5px 15px rgba(0,0,0,0.1); z-index:1000;">
-                                <div class="dropdown-item" id="go-away-btn" style="padding:12px 20px; cursor:pointer;">자리비움</div>
-                                <a href="account.html" style="padding:12px 20px; text-decoration:none; color:#444; display:block;">계정관리</a>
-                                <hr style="border:0; border-top:1px solid #eee; margin:5px 0;">
-                                <div class="dropdown-item" id="logout-btn" style="padding:12px 20px; color:#ff6b6b; cursor:pointer;">로그아웃</div>
-                            </div>
-                        </div>`;
-                }
-
-                // 이벤트 바인딩
-                const trigger = document.getElementById('user-menu-trigger');
-                const dropdown = document.getElementById('user-dropdown');
-                if (trigger) trigger.onclick = (e) => { e.stopPropagation(); dropdown.style.display = dropdown.style.display === 'flex' ? 'none' : 'flex'; };
-
-                const listIcon = document.getElementById('list-icon-trigger');
-                const listMenu = document.getElementById('list-menu-dropdown');
-                if (listIcon) listIcon.onclick = (e) => { e.stopPropagation(); listMenu.classList.toggle('active'); };
-
-                document.onclick = () => { if (dropdown) dropdown.style.display = 'none'; if (listMenu) listMenu.classList.remove('active'); };
-                document.getElementById('logout-btn').onclick = async () => { 
-                    localStorage.removeItem('userProfile'); 
-                    await window.supabaseClient.auth.signOut(); 
-                    location.href='index.html'; 
-                };
+                // [중요] 동적으로 생성된 요소에 이벤트 바인딩
+                bindEvents();
             } else {
+                localStorage.removeItem('userProfile');
                 location.href = 'login.html';
             }
-        };
+        }
+
+        function bindEvents() {
+            const trigger = document.getElementById('user-menu-trigger');
+            const dropdown = document.getElementById('user-dropdown');
+            const listIcon = document.getElementById('list-icon-trigger');
+            const listMenu = document.getElementById('list-menu-dropdown');
+
+            if (trigger) trigger.onclick = (e) => { e.stopPropagation(); dropdown.style.display = dropdown.style.display === 'flex' ? 'none' : 'flex'; };
+            if (listIcon) listIcon.onclick = (e) => { e.stopPropagation(); listMenu.classList.toggle('active'); };
+            
+            document.onclick = () => { if (dropdown) dropdown.style.display = 'none'; if (listMenu) listMenu.classList.remove('active'); };
+            
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) logoutBtn.onclick = async () => {
+                localStorage.removeItem('userProfile');
+                await window.supabaseClient.auth.signOut();
+                location.href = 'index.html';
+            };
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
-            initApp();
+            checkUser();
 
             const sidebar = document.getElementById('sidebar');
             const toggleBtn = document.getElementById('sidebar-toggle');
@@ -244,11 +205,6 @@
             };
 
             document.querySelectorAll('.tree-item').forEach(attachDragEvents);
-            const dropzone = document.getElementById('tree-dropzone');
-            dropzone.addEventListener('dragover', (e) => e.preventDefault());
-            dropzone.addEventListener('drop', (e) => {
-                if (e.target.id === 'tree-dropzone' || e.target.id === 'main-group') document.getElementById('main-group').appendChild(draggedItem);
-            });
         });
     </script>
 </body>
