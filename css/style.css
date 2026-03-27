@@ -15,11 +15,15 @@
 }
 
 body {
+    margin: 0;
+    padding: 0;
+    /* body 전체 높이를 화면 높이(100vh)로 설정 */
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     background-color: var(--bg-color);
-    color: var(--text-main);
-    /* a시네마L 폰트를 우선 적용, 없을 경우 Noto Sans KR 등 고딕 적용 */
     font-family: 'a시네마L', 'aCinemaL', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
-    line-height: 1.6;
 }
 
 /* 네비게이션 바 (상단) */
@@ -498,6 +502,7 @@ body {
     border-radius: 15px;
     box-shadow: 0 10px 25px rgba(0,0,0,0.05);
     text-align: center;
+    position: relative;
 }
 
 .auth-title {
