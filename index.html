@@ -24,5 +24,27 @@
             </div>
         </div>
     </main>
+
+// index.html 하단 스크립트
+async function checkUser() {
+    const { data: { user } } = await window.supabaseClient.auth.getUser();
+
+    if (user) {
+        // 로그인 된 상태라면
+        const nav = document.querySelector('nav');
+        const nickname = user.user_metadata.display_name || "작가";
+        nav.innerHTML = `
+            <span style="margin-right:15px;">안녕하세요, <b>${nickname}</b>님</span>
+            <a href="#" id="logout-btn" class="nav-link">로그아웃</a>
+        `;
+
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await window.supabaseClient.auth.signOut();
+            location.reload(); // 새로고침해서 상태 반영
+        });
+    }
+}
+checkUser();
+
 </body>
 </html>

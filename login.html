@@ -11,6 +11,7 @@
 <body>
     <div class="auth-container">
         <h2 class="auth-title">로그인</h2>
+        
         <form id="login-form">
             <div class="input-group">
                 <input type="text" id="login-username" placeholder="아이디" required>
@@ -20,6 +21,7 @@
             </div>
             <button type="submit" class="btn btn-primary">로그인</button>
         </form>
+
         <p class="auth-footer">계정이 없으신가요? <a href="signup.html">회원가입</a></p>
     </div>
 
@@ -28,39 +30,28 @@
 
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const username = document.getElementById('login-username').value;
             const password = document.getElementById('login-password').value;
-            
-            // 회원가입 시 설정했던 것과 동일한 가짜 도메인을 붙여 이메일 형식으로 만듭니다.
-            const fakeEmail = `${username}@novel.blog`;
 
-            // 로그인 버튼 비활성화 (중복 클릭 방지)
-            const submitBtn = loginForm.querySelector('button');
-            submitBtn.disabled = true;
-            submitBtn.textContent = '로그인 중...';
+            // [핵심] 가입할 때와 똑같이 아이디 뒤에 도메인을 붙여서 이메일 형식으로 만듭니다.
+            const fakeEmail = username + "@novel.blog";
 
             try {
-                // Supabase 로그인 실행
-                const { data, error } = await window.supabase.auth.signInWithPassword({
+                const { data, error } = await window.supabaseClient.auth.signInWithPassword({
                     email: fakeEmail,
                     password: password,
                 });
 
                 if (error) throw error;
 
-                // 로그인 성공 시
                 alert("반갑습니다, " + username + "님!");
-                // 성공 후 이동할 페이지 (예: 소개 페이지나 소설 관리 페이지)
+                // 로그인 성공 후 이동할 페이지 (예: 메인 소개 페이지 또는 계정 관리)
                 window.location.href = 'index.html'; 
 
             } catch (err) {
-                console.error("로그인 에러:", err.message);
-                alert("로그인 실패: 아이디 또는 비밀번호를 확인해주세요.");
-                
-                // 버튼 복구
-                submitBtn.disabled = false;
-                submitBtn.textContent = '로그인';
+                alert("로그인 실패: 아이디 또는 비밀번호를 확인하세요.");
+                console.error(err.message);
             }
         });
     </script>
