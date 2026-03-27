@@ -81,8 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     if (uploadError)
 
-
-
 // Supabase 회원가입 실행
             const { data, error } = await window.supabase.auth.signUp({
                 email: fakeEmail, // 변환된 가짜 이메일 사용
