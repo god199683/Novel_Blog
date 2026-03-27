@@ -1,0 +1,20 @@
+/* css/style.css */
+:root {
+    --primary-color: #87CEEB; /* 메인 스카이블루 */
+    --button-hover: #5F9EA0;  /* 버튼 호버 색상 */
+    --bg-color: #FFFFFF;      /* 배경 화이트 */
+    --text-color: #333333;    /* 기본 텍스트 색상 */
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    /* 뷰어와 에디터의 가독성을 고려한 폰트 설정 */
+    font-family: 'a시네마L', 'aCinemaL', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
