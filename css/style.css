@@ -1,151 +1,69 @@
-/* 1. 기본 초기화 및 변수 설정 */
-:root {
-    --primary-color: #87CEEB; /* 스카이블루 */
-    --primary-hover: #5ebde6;
-    --bg-color: #FFFFFF;
-    --text-main: #333333;
-    --text-sub: #666666;
-    --border-color: #eeeeee;
-}
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+/* css/style.css */
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-    background-color: var(--bg-color);
-    color: var(--text-main);
-    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
-    line-height: 1.6;
-    min-height: 100vh;
+    background-color: #ffffff;
+    color: #333;
+    font-family: sans-serif;
     display: flex;
     flex-direction: column;
+    min-height: 100vh;
 }
 
-/* 2. 네비게이션 바 (상단) */
+/* 상단바 디자인 */
 .navbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 50px;
-    background: #fff;
-    border-bottom: 1px solid var(--border-color);
+    padding: 20px 40px;
+    background-color: #ffffff;
+    border-bottom: 2px solid #87CEEB; /* 스카이블루 선 */
 }
 
 .logo {
     font-size: 24px;
     font-weight: bold;
-    color: var(--primary-color);
-    cursor: pointer;
+    color: #87CEEB;
 }
 
-.nav-link {
-    text-decoration: none;
-    color: var(--text-sub);
-    font-weight: 500;
-    transition: color 0.3s;
-}
-
-.nav-link:hover {
-    color: var(--primary-color);
-}
-
-/* 3. 메인 히어로 섹션 (중앙 정렬) */
+/* 메인 화면 중앙 정렬 레이아웃 */
 .hero-section {
     flex: 1;
     display: flex;
     justify-content: center;
     align-items: center;
     text-align: center;
-    padding: 40px 20px;
+    padding: 20px;
 }
 
-.hero-content {
-    max-width: 800px;
-}
-
-.hero-title {
-    font-size: 3rem;
-    font-weight: 800;
-    margin-bottom: 20px;
-    color: var(--text-main);
-    line-height: 1.3;
-}
-
-.hero-subtitle {
-    font-size: 1.2rem;
-    color: var(--text-sub);
-    margin-bottom: 40px;
-}
-
-/* 4. 버튼 공통 스타일 */
-.btn {
-    display: inline-block;
-    padding: 16px 40px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    text-decoration: none;
-    border-radius: 50px;
-    transition: all 0.3s;
-    cursor: pointer;
-    border: none;
+/* 로그인/회원가입 박스 */
+.auth-container {
+    width: 100%;
+    max-width: 380px;
+    padding: 40px;
+    border: 1px solid #eeeeee;
+    border-radius: 15px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
 }
 
 .btn-primary {
-    background-color: var(--primary-color);
-    color: white;
-    box-shadow: 0 4px 15px rgba(135, 206, 235, 0.3);
-}
-
-.btn-primary:hover {
-    background-color: var(--primary-hover);
-    transform: translateY(-2px);
-}
-
-/* 5. 인증 컨테이너 (로그인/회원가입용) */
-.auth-container {
+    display: block;
     width: 100%;
-    max-width: 400px;
-    margin: 50px auto;
-    padding: 40px;
-    background: #fff;
-    border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-    text-align: center;
-}
-
-.auth-title {
-    margin-bottom: 25px;
-    color: var(--primary-color);
-    font-size: 1.8rem;
-}
-
-/* 6. 입력창 스타일 */
-.input-group {
-    margin-bottom: 15px;
+    padding: 15px;
+    background-color: #87CEEB;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+    border: none;
+    margin-top: 20px;
+    cursor: pointer;
 }
 
 .input-group input {
     width: 100%;
-    padding: 14px;
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    outline: none;
-}
-
-.input-group input:focus {
-    border-color: var(--primary-color);
-}
-
-/* 7. 프로필 이미지 미리보기 */
-.profile-preview {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid var(--primary-color);
+    padding: 12px;
     margin-bottom: 10px;
-    cursor: pointer;
+    border: 1px solid #ddd;
+    border-radius: 5px;
 }

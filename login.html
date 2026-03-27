@@ -50,22 +50,23 @@
             // 아이디 기반 가짜 이메일 생성
             const fakeEmail = username + "@novel.blog";
 
-            try {
-                // Supabase 로그인 시도
-                const { data, error } = await window.supabaseClient.auth.signInWithPassword({
-                    email: fakeEmail,
-                    password: password,
-                });
+          try {
+    const { data, error } = await window.supabaseClient.auth.signInWithPassword({
+        email: fakeEmail,
+        password: password,
+    });
 
-                if (error) throw error;
+    if (error) throw error;
 
-                alert(username + " 작가님, 반갑습니다!");
-                window.location.href = 'index.html'; 
+    alert(username + " 작가님, 환영합니다!");
+    
+    // [수정] index.html 대신 viewer.html로 이동합니다.
+    window.location.href = 'viewer.html'; 
 
-            } catch (err) {
-                console.error("로그인 에러:", err.message);
-                alert("로그인 실패: 아이디 또는 비밀번호를 확인하세요.");
-            }
+} catch (err) {
+    console.error("로그인 에러:", err.message);
+    alert("로그인 실패: 아이디 또는 비밀번호를 확인하세요.");
+}
         });
     </script>
 </body>
