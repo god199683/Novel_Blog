@@ -14,23 +14,22 @@
         
         <form id="signup-form">
             <div class="profile-upload-group">
-                <label for="profile-image">
-                    <img src="https://via.placeholder.com/100?text=+" id="preview-img" class="profile-preview">
+                <label for="profile-image" style="cursor: pointer;">
+                    <img src="https://via.placeholder.com/150/87CEEB/FFFFFF?text=Click" id="preview-img" class="profile-preview">
                 </label>
                 <input type="file" id="profile-image" accept="image/*" style="display: none;">
-                <span class="profile-hint">프로필 사진을 선택하세요</span>
+                <p class="profile-hint">사진을 클릭하여 선택하세요</p>
             </div>
 
-<div class="input-group">
-    <input type="text" id="username" placeholder="아이디 (영문/숫자)" required>
-</div>
-<div class="input-group">
-    <input type="text" id="nickname" placeholder="닉네임" required>
-</div>
-<div class="input-group">
-    <input type="password" id="password" placeholder="비밀번호 (6자 이상)" required>
-</div>
-
+            <div class="input-group">
+                <input type="text" id="username" placeholder="아이디" required>
+            </div>
+            <div class="input-group">
+                <input type="password" id="password" placeholder="비밀번호 (6자 이상)" required>
+            </div>
+            <div class="input-group">
+                <input type="text" id="nickname" placeholder="닉네임" required>
+            </div>
 
             <button type="submit" class="btn btn-primary">가입하기</button>
         </form>
@@ -38,6 +37,34 @@
         <p class="auth-footer">계정이 이미 있으신가요? <a href="login.html">로그인</a></p>
     </div>
 
+    <script>
+        // 페이지가 로드되면 바로 실행
+        window.onload = function() {
+            const fileInput = document.getElementById('profile-image');
+            const previewImg = document.getElementById('preview-img');
+
+            console.log("체크1: 요소 찾기", fileInput, previewImg);
+
+            if (fileInput && previewImg) {
+                // 파일이 바뀌었을 때 실행되는 함수
+                fileInput.onchange = function(e) {
+                    console.log("체크2: 파일 선택됨");
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            previewImg.src = event.target.result;
+                            console.log("체크3: 이미지 변경 완료");
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                };
+            } else {
+                console.error("오류: HTML의 ID와 스크립트의 ID가 일치하지 않습니다!");
+            }
+        };
+    </script>
+    
     <script src="./js/auth.js"></script>
 </body>
 </html>
