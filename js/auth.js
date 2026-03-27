@@ -11,31 +11,30 @@ document.addEventListener('DOMContentLoaded', function() {
     // 2. 미리보기 로직 (중복 제거 버전)
     // HTML의 <label for="profile-image"> 덕분에 이미지를 클릭하면 파일 창이 자동으로 열립니다.
     // 자바스크립트에서는 파일이 "선택되었을 때"의 로직만 구현하면 됩니다.
-    if (profileInput && previewImg) {
-        
-        // [수정] 이미지를 클릭했을 때 profileInput.click()을 호출하는 중복 코드를 제거했습니다.
-        // 이 코드가 있으면 label의 기본 동작과 겹쳐서 문제를 일으킬 수 있습니다.
+  // js/auth.js 의 미리보기 로직 부분 교체
 
-        // 파일이 바뀌었을 때 실행 (한 번만 선택해도 작동함)
-        profileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                // 이미지 파일인지 확인
-                if (!file.type.startsWith('image/')) {
-                    alert('이미지 파일만 선택 가능합니다.');
-                    profileInput.value = ''; // 선택 초기화
-                    return;
-                }
+if (profileInput && previewImg) {
+    // [확실한 방법] 라벨 대신 이미지를 클릭했을 때 자바스크립트가 직접 파일 창을 엽니다.
+    // 이를 위해 HTML에서 label 태그를 지우거나, 자바스크립트에서 라벨의 기본 동작을 막아야 합니다.
+    
+    // 이미지를 클릭하면 파일 창을 엽니다.
+    previewImg.addEventListener('click', function(e) {
+        e.preventDefault(); // 라벨의 기본 동작이 있다면 막음
+        profileInput.click(); // 파일 창을 직접 켬
+    });
 
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    previewImg.src = event.target.result; // 이미지 교체
-                    console.log("미리보기 업데이트 완료");
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-    }
+    // 파일이 바뀌었을 때 실행
+    profileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                previewImg.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+}
 
     // 3. 회원가입 제출 로직 (이전과 동일)
     if (signupForm) {
