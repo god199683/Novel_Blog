@@ -1,89 +1,77 @@
-// js/auth.js 전체 코드를 아래 내용으로 대체하세요
+// js/auth.js
 
-// 가상 도메인 설정 (아이디를 이메일처럼 변환)
-const DOMAIN = "@novel.me";
+// 1. 프로필 이미지 미리보기 로직
+const profileInput = document.getElementById('profile-image');
+const previewImg = document.getElementById('preview-img');
 
-// --- [추가] 프로필 사진 미리보기 로직 ---
-const profileImageInput = document.getElementById('profile-image');
-const profilePreview = document.getElementById('profile-preview');
-
-if (profileImageInput && profilePreview) {
-    profileImageInput.addEventListener('change', function(e) {
+if (profileInput) {
+    profileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = function(event) {
-                // 선택한 파일을 base64 문자열로 변환하여 이미지 src에 넣음
-                profilePreview.src = event.target.result;
-            }
+            reader.onload = (event) => {
+                previewImg.src = event.target.result;
+            };
             reader.readAsDataURL(file);
         }
     });
 }
 
-
-// --- [회원가입 로직] ---
+// 2. 회원가입 제출 로직
 const signupForm = document.getElementById('signup-form');
+
 if (signupForm) {
     signupForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
-        const username = document.getElementById('username').value;
+
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
         const nickname = document.getElementById('nickname').value;
-        const password = document.getElementById('password').value;
-        const profileFile = profileImageInput.files[0]; // 선택한 파일 가져오기
+        const profileFile = profileInput.files[0];
 
-        // 1. 아이디를 이메일 형식으로 변환
-        const fakeEmail = username + DOMAIN;
+        try {
+            let avatarUrl = null;
 
-        // [참고] 실제 서비스에서는 profileFile을 Supabase Storage에 업로드하고
-        // 그 URL을 아래 메타데이터에 담아야 합니다. 
-        // 지금은 일단 메타데이터에 닉네임만 저장하는 기본 로직을 유지합니다.
+            // 이미지가 선택된 경우 스토리지에 먼저 업로드
+            if (profileFile) {
+                const fileExt = profileFile.name.split('.').pop();
+                const fileName = `${Math.random()}.${fileExt}`;
+                const filePath = `avatars/${fileName}`;
 
-        // 2. Supabase 회원가입 호출
-        const { data, error } = await supabase.auth.signUp({
-            email: fakeEmail,
-            password: password,
-            options: {
-                data: { 
-                    display_name: nickname,
-                    // avatar_url: storageUrl // (나중에 구현할 이미지 URL)
-                } 
+                const { error: uploadError } = await window.supabase.storage
+                    .from('profile_pictures') // 스토리지 버킷 이름 확인!
+                    .upload(filePath, profileFile);
+
+                if (uploadError) throw uploadError;
+
+                // 공개 URL 가져오기
+                const { data: urlData } = window.supabase.storage
+                    .from('profile_pictures')
+                    .getPublicUrl(filePath);
+                
+                avatarUrl = urlData.publicUrl;
             }
-        });
 
-        if (error) {
-            alert("회원가입 실패: " + error.message);
-        } else {
-            alert("가입을 환영합니다! 로그인 해주세요.");
-            location.href = "login.html";
+            // Supabase 회원가입 실행
+            const { data, error } = await window.supabase.auth.signUp({
+                email: email,
+                password: password,
+                options: {
+                    data: {
+                        display_name: nickname,
+                        avatar_url: avatarUrl
+                    }
+                }
+            });
+
+            if (error) throw error;
+
+            alert("가입 성공! 이메일을 확인하여 인증을 완료해주세요.");
+            window.location.href = 'login.html';
+
+        } catch (err) {
+            console.error("에러 발생:", err.message);
+            alert("가입 실패: " + err.message);
         }
-    });
-}
-
-// --- [로그인 로직] ---
-const loginForm = document.getElementById('login-form');
-if (loginForm) {
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-
-        // 1. 아이디를 이메일 형식으로 변환
-        const fakeEmail = username + DOMAIN;
-
-        // 2. Supabase 로그인 호출
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email: fakeEmail,
-            password: password,
-        });
-
-        if (error) {
-    alert("로그인 실패: 아이디 또는 비밀번호를 확인하세요.");
-} else {
-    alert("반갑습니다, 작가님!");
-    location.href = "viewer.html"; // 로그인 후 뷰어/관리 페이지로 이동
-}
     });
 }
