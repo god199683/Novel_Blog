@@ -4,47 +4,80 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Novel-Blog : 당신의 이야기가 피어나는 곳</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./js/supabase-config.js"></script>
 </head>
 <body>
     <header class="navbar">
         <div class="logo">Novel-Blog</div>
+        <nav id="auth-nav">
+            <a href="login.html" class="nav-link">로그인</a>
+        </nav>
     </header>
 
     <main class="hero-section">
         <div class="hero-content">
-            <h1 class="hero-title">당신만의 세계를<br>자유롭게 펼쳐보세요.</h1>
-            <p class="hero-subtitle">
+            <h1 class="hero-title" id="welcome-title">당신만의 세계를<br>자유롭게 펼쳐보세요.</h1>
+            <p class="hero-subtitle" id="welcome-subtitle">
                 번역부터 소설 작성, 관리까지.<br>
                 오직 글에만 집중할 수 있는 쾌적한 환경을 제공합니다.
             </p>
-            <div class="cta-buttons">
+            <div id="main-action">
                 <a href="login.html" class="btn btn-primary">지금 시작하기</a>
             </div>
         </div>
     </main>
 
-// index.html 하단 스크립트
-async function checkUser() {
-    const { data: { user } } = await window.supabaseClient.auth.getUser();
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Supabase 객체가 있는지 확인
+            if (!window.supabaseClient) {
+                console.error("Supabase 클라이언트를 찾을 수 없습니다.");
+                return;
+            }
 
-    if (user) {
-        // 로그인 된 상태라면
-        const nav = document.querySelector('nav');
-        const nickname = user.user_metadata.display_name || "작가";
-        nav.innerHTML = `
-            <span style="margin-right:15px;">안녕하세요, <b>${nickname}</b>님</span>
-            <a href="#" id="logout-btn" class="nav-link">로그아웃</a>
-        `;
+            // 현재 로그인 유저 정보 가져오기
+            const { data: { user }, error } = await window.supabaseClient.auth.getUser();
 
-        document.getElementById('logout-btn').addEventListener('click', async () => {
-            await window.supabaseClient.auth.signOut();
-            location.reload(); // 새로고침해서 상태 반영
+            const nav = document.getElementById('auth-nav');
+            const title = document.getElementById('welcome-title');
+            const subtitle = document.getElementById('welcome-subtitle');
+            const action = document.getElementById('main-action');
+
+            if (user) {
+                // --- 로그인 된 상태 (회원 전용 화면) ---
+                const nickname = user.user_metadata.display_name || "작가";
+                const avatar = user.user_metadata.avatar_url || "https://via.placeholder.com/150/87CEEB/FFFFFF?text=User";
+
+                // 1. 네비게이션 변경 (프로필 사진 + 로그아웃)
+                nav.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <img src="${avatar}" style="width:35px; height:35px; border-radius:50%; object-fit:cover; border:2px solid #87CEEB;">
+                        <span style="font-weight:600;">${nickname} 작가님</span>
+                        <a href="#" id="logout-btn" class="nav-link" style="margin-left:10px; color:#ff6b6b;">로그아웃</a>
+                    </div>
+                `;
+
+                // 2. 메인 문구 변경
+                title.innerHTML = `${nickname} 작가님,<br>오늘의 문장을 시작할까요?`;
+                subtitle.innerText = "당신이 멈췄던 그곳에서 이야기가 기다리고 있습니다.";
+                
+                // 3. 버튼을 '소설 관리'로 변경
+                action.innerHTML = `<a href="novel-manage.html" class="btn btn-primary">내 소설 관리하기</a>`;
+
+                // 4. 로그아웃 이벤트 연결
+                document.getElementById('logout-btn').addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    await window.supabaseClient.auth.signOut();
+                    alert("로그아웃 되었습니다.");
+                    location.reload();
+                });
+            } else {
+                // --- 로그인 안 된 상태 (기본 화면) ---
+                console.log("로그인 정보 없음");
+            }
         });
-    }
-}
-checkUser();
-
+    </script>
 </body>
 </html>
