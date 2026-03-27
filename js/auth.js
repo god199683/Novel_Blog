@@ -1,77 +1,79 @@
 // js/auth.js
 
-// 1. 프로필 이미지 미리보기 로직
-const profileInput = document.getElementById('profile-image');
-const previewImg = document.getElementById('preview-img');
+// 페이지 로드 시 실행
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. 프로필 이미지 미리보기 및 클릭 이벤트
+    const profileInput = document.getElementById('profile-image');
+    const previewImg = document.getElementById('preview-img');
+    const profileText = document.querySelector('.profile-hint'); // 텍스트 숨기기용
 
-if (profileInput) {
-    profileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                previewImg.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-}
+    if (profileInput && previewImg) {
+        // [추가] 이미지를 클릭하면 파일 선택창이 뜨도록 설정
+        previewImg.addEventListener('click', () => {
+            profileInput.click();
+        });
 
-// 2. 회원가입 제출 로직
-const signupForm = document.getElementById('signup-form');
+        // 파일 선택 시 미리보기 로직
+        profileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                // 이미지 파일인지 확인 (안전장치)
+                if (!file.type.startsWith('image/')) {
+                    alert('이미지 파일만 업로드 가능합니다.');
+                    profileInput.value = ''; // 선택 초기화
+                    return;
+                }
 
-if (signupForm) {
-    signupForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    previewImg.src = event.target.result; // 이미지 변경
+                    
+                    // [추가] 사진 선택 시 아래 텍스트 숨기기 (깔끔하게)
+                    if (profileText) profileText.style.display = 'none'; 
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
 
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const nickname = document.getElementById('nickname').value;
-        const profileFile = profileInput.files[0];
+    // 2. 회원가입 제출 로직 (기존과 동일)
+    const signupForm = document.getElementById('signup-form');
 
-        try {
-            let avatarUrl = null;
+    if (signupForm) {
+        signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
 
-            // 이미지가 선택된 경우 스토리지에 먼저 업로드
-            if (profileFile) {
-                const fileExt = profileFile.name.split('.').pop();
-                const fileName = `${Math.random()}.${fileExt}`;
-                const filePath = `avatars/${fileName}`;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const nickname = document.getElementById('nickname').value;
+            const profileFile = profileInput ? profileInput.files[0] : null;
 
-                const { error: uploadError } = await window.supabase.storage
-                    .from('profile_pictures') // 스토리지 버킷 이름 확인!
-                    .upload(filePath, profileFile);
-
-                if (uploadError) throw uploadError;
-
-                // 공개 URL 가져오기
-                const { data: urlData } = window.supabase.storage
-                    .from('profile_pictures')
-                    .getPublicUrl(filePath);
-                
-                avatarUrl = urlData.publicUrl;
+            // 비밀번호 길이 체크 (안전장치)
+            if (password.length < 6) {
+                alert('비밀번호는 6자리 이상이어야 합니다.');
+                return;
             }
 
-            // Supabase 회원가입 실행
-            const { data, error } = await window.supabase.auth.signUp({
-                email: email,
-                password: password,
-                options: {
-                    data: {
-                        display_name: nickname,
-                        avatar_url: avatarUrl
-                    }
-                }
-            });
+            // 가입 중 버튼 비활성화 (중복 클릭 방지)
+            const submitBtn = signupForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = '가입 중...';
+            }
 
-            if (error) throw error;
+            try {
+                let avatarUrl = null;
 
-            alert("가입 성공! 이메일을 확인하여 인증을 완료해주세요.");
-            window.location.href = 'login.html';
+                // 이미지가 선택된 경우 스토리지에 먼저 업로드
+                if (profileFile) {
+                    const fileExt = profileFile.name.split('.').pop();
+                    // 유니크한 파일명 생성 (에러 방지)
+                    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+                    const filePath = `avatars/${fileName}`;
 
-        } catch (err) {
-            console.error("에러 발생:", err.message);
-            alert("가입 실패: " + err.message);
-        }
-    });
-}
+                    // Supabase Storage 업로드 ('profile_pictures' Public 버킷 필수)
+                    const { error: uploadError } = await window.supabase.storage
+                        .from('profile_pictures')
+                        .upload(filePath, profileFile);
+
+                    if (uploadError)
