@@ -39,14 +39,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. 회원가입 제출 로직 (기존과 동일)
     const signupForm = document.getElementById('signup-form');
 
-    if (signupForm) {
-        signupForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+   if (signupForm) {
+    signupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const nickname = document.getElementById('nickname').value;
-            const profileFile = profileInput ? profileInput.files[0] : null;
+        // [변경] 이메일 대신 아이디(username)를 가져옵니다.
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const nickname = document.getElementById('nickname').value;
+        const profileFile = profileInput ? profileInput.files[0] : null;
 
             // 비밀번호 길이 체크 (안전장치)
             if (password.length < 6) {
@@ -61,8 +62,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 submitBtn.textContent = '가입 중...';
             }
 
-            try {
-                let avatarUrl = null;
+      const fakeEmail = `${username}@novel.blog`;
+
+        try {
+            let avatarUrl = null;
 
                 // 이미지가 선택된 경우 스토리지에 먼저 업로드
                 if (profileFile) {
@@ -77,3 +80,30 @@ document.addEventListener('DOMContentLoaded', () => {
                         .upload(filePath, profileFile);
 
                     if (uploadError)
+
+
+
+// Supabase 회원가입 실행
+            const { data, error } = await window.supabase.auth.signUp({
+                email: fakeEmail, // 변환된 가짜 이메일 사용
+                password: password,
+                options: {
+                    data: {
+                        username: username, // 실제 아이디 저장
+                        display_name: nickname,
+                        avatar_url: avatarUrl
+                    }
+                }
+            });
+
+            if (error) throw error;
+
+            alert("회원가입이 완료되었습니다!");
+            window.location.href = 'login.html';
+
+        } catch (err) {
+            console.error("에러 발생:", err.message);
+            alert("가입 실패: " + err.message);
+        }
+    });
+}
