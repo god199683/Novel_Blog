@@ -8,20 +8,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const previewImg = document.getElementById('preview-img');
     const signupForm = document.getElementById('signup-form');
 
-    // 2. 미리보기 및 클릭 이벤트 로직
+    // 2. 미리보기 로직 (중복 제거 버전)
+    // HTML의 <label for="profile-image"> 덕분에 이미지를 클릭하면 파일 창이 자동으로 열립니다.
+    // 자바스크립트에서는 파일이 "선택되었을 때"의 로직만 구현하면 됩니다.
     if (profileInput && previewImg) {
-        // 이미지를 클릭하면 파일 창이 뜨게 함
-        previewImg.addEventListener('click', function() {
-            profileInput.click();
-        });
+        
+        // [수정] 이미지를 클릭했을 때 profileInput.click()을 호출하는 중복 코드를 제거했습니다.
+        // 이 코드가 있으면 label의 기본 동작과 겹쳐서 문제를 일으킬 수 있습니다.
 
-        // 파일이 선택되면 실행
+        // 파일이 바뀌었을 때 실행 (한 번만 선택해도 작동함)
         profileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
+                // 이미지 파일인지 확인
+                if (!file.type.startsWith('image/')) {
+                    alert('이미지 파일만 선택 가능합니다.');
+                    profileInput.value = ''; // 선택 초기화
+                    return;
+                }
+
                 const reader = new FileReader();
                 reader.onload = function(event) {
-                    previewImg.src = event.target.result;
+                    previewImg.src = event.target.result; // 이미지 교체
                     console.log("미리보기 업데이트 완료");
                 };
                 reader.readAsDataURL(file);
@@ -29,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 3. 회원가입 제출 로직
+    // 3. 회원가입 제출 로직 (이전과 동일)
     if (signupForm) {
         signupForm.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -39,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const nickname = document.getElementById('nickname').value;
             const profileFile = profileInput ? profileInput.files[0] : null;
 
-            // 아이디를 이메일 형식으로 변환 (Supabase 연동용)
+            // 아이디 기반 가짜 이메일
             const fakeEmail = username + "@novel.blog";
 
             try {
@@ -51,13 +59,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     const fileName = Date.now() + "." + fileExt;
                     const filePath = "avatars/" + fileName;
 
-                    const { error: uploadError } = await window.supabase.storage
+                    const { error: uploadError } = await window.supabaseClient.storage
                         .from('profile_pictures')
                         .upload(filePath, profileFile);
 
                     if (uploadError) throw uploadError;
 
-                    const { data: urlData } = window.supabase.storage
+                    const { data: urlData } = window.supabaseClient.storage
                         .from('profile_pictures')
                         .getPublicUrl(filePath);
                     
@@ -65,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 // Supabase 가입 실행
-                const { data, error } = await window.supabase.auth.signUp({
+                const { data, error } = await window.supabaseClient.auth.signUp({
                     email: fakeEmail,
                     password: password,
                     options: {
