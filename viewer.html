@@ -19,10 +19,12 @@
         #sidebar-toggle { position: absolute; left: 280px; top: 10px; z-index: 100; cursor: pointer; background: #87CEEB; color: #fff; border: none; padding: 8px 12px; border-radius: 0 5px 5px 0; transition: left 0.3s ease; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
         .sidebar.collapsed + #sidebar-toggle { left: 0; transition: none; }
 
+        /* [드롭다운 스타일 완벽 복구] */
         .list-dropdown, .dropdown-menu { position: absolute; background: #fff; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: none; flex-direction: column; z-index: 1100; padding: 10px 0; }
         .list-dropdown.active { display: flex; top: 45px; right: 10px; width: 220px; }
         .dropdown-menu { top: 100%; right: 0; width: 170px; }
         .list-group-title { padding: 8px 15px; font-size: 0.75rem; color: #aaa; font-weight: bold; background: #fafafa; border-top: 1px solid #f0f0f0; }
+        .list-group-title:first-child { border-top: none; }
         .list-item, .dropdown-item { padding: 8px 20px; font-size: 0.85rem; color: #444; cursor: pointer; transition: 0.2s; text-decoration: none; }
         .list-item:hover, .dropdown-item:hover { background: #f0faff; color: #87CEEB; }
 
@@ -80,14 +82,24 @@
             <div style="padding: 12px 15px; border-bottom: 1px solid #eee; font-weight: bold; color: #87CEEB; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; position: relative;">
                 <span>Novel</span>
                 <span id="list-icon-trigger" style="cursor:pointer; font-size: 1.1rem;">📋</span>
+                
                 <div id="list-menu-dropdown" class="list-dropdown">
                     <div class="list-group-title">추가</div>
                     <div class="list-item" onclick="addFolder()">폴더 추가</div>
+                    
                     <div class="list-group-title">도구 상자</div>
+                    <div class="list-item" onclick="alert('선택 모드')">선택 모드</div>
                     <div class="list-item" onclick="alert('전체 선택')">전체 선택</div>
+                    <div class="list-item" onclick="alert('선택 해제')">선택 해제</div>
                     <div class="list-item" onclick="alert('전체 삭제')">전체 삭제</div>
-                    <div class="list-group-title">내보내기</div>
-                    <div class="list-item" onclick="alert('내보내기')">전체 내보내기</div>
+                    <div class="list-item" onclick="alert('선택 항목 삭제')">선택 항목 삭제</div>
+                    <div class="list-item" onclick="alert('오름차순 정렬')">오름차순 정렬</div>
+                    <div class="list-item" onclick="alert('내림차순 정렬')">내림차순 정렬</div>
+                    
+                    <div class="list-group-title">내보내기 및 불러오기</div>
+                    <div class="list-item" onclick="alert('전체 내보내기')">전체 내보내기</div>
+                    <div class="list-item" onclick="alert('선택 항목 내보내기')">선택 항목 내보내기</div>
+                    <div class="list-item" onclick="alert('불러오기')">불러오기</div>
                 </div>
             </div>
             <div class="tree-container" id="tree-dropzone">
@@ -106,7 +118,7 @@
                     <h2 id="viewer-title" style="color: #87CEEB;">제목</h2>
                     <h3 id="viewer-subtitle" style="font-size: 1rem; color: #888; margin-top: 5px; font-weight: normal;">부제목</h3>
                 </div>
-                <div id="viewer-content" style="line-height: 2.2; white-space: pre-wrap; font-size: 1.1rem; color: #444;">새로고침 시 폴더가 유지됩니다.</div>
+                <div id="viewer-content" style="line-height: 2.2; white-space: pre-wrap; font-size: 1.1rem; color: #444;">드롭다운 목록, 프로필, 폴더가 모두 유지됩니다.</div>
             </article>
         </main>
     </div>
@@ -120,21 +132,17 @@
             document.getElementById('viewer-content').innerText = c;
         }
 
-        // [수정] 폴더 추가 및 저장 로직
         function addFolder() {
             const name = prompt("폴더 이름을 입력하세요:", "새 폴더");
             if (!name) return;
-            
             const folderId = 'folder-' + Date.now();
             createFolderElement(name, folderId, 'main-group');
-            saveTreeStructure(); // 구조 저장
+            saveTreeStructure();
             document.getElementById('list-menu-dropdown').classList.remove('active');
         }
 
         function createFolderElement(name, id, parentId) {
-            const parent = parentId === 'main-group' ? document.getElementById('main-group') : document.querySelector(`[data-id="${parentId}"] .tree-group`);
-            if (!parent) return;
-
+            const parent = document.getElementById('main-group');
             const li = document.createElement('li');
             li.className = 'tree-item';
             li.draggable = true;
@@ -142,37 +150,29 @@
             li.dataset.type = 'folder';
             li.dataset.name = name;
             li.innerHTML = `<div class="item-content folder">📁 ${name}</div><ul class="tree-group"></ul>`;
-            
             parent.appendChild(li);
             attachDragEvents(li);
         }
 
-        // [수정] 트리 구조 저장 (localStorage)
         function saveTreeStructure() {
-            const treeData = [];
-            document.querySelectorAll('#main-group > .tree-item[data-type="folder"]').forEach(folder => {
-                treeData.push({
-                    id: folder.dataset.id,
-                    name: folder.dataset.name,
-                    parentId: 'main-group'
-                });
+            const folders = [];
+            document.querySelectorAll('#main-group > .tree-item[data-type="folder"]').forEach(f => {
+                folders.push({ id: f.dataset.id, name: f.dataset.name });
             });
-            localStorage.setItem('sidebarFolders', JSON.stringify(treeData));
+            localStorage.setItem('sidebarFolders', JSON.stringify(folders));
         }
 
-        // [수정] 저장된 폴더 복구
         function loadTreeStructure() {
-            const savedFolders = localStorage.getItem('sidebarFolders');
-            if (savedFolders) {
-                const folders = JSON.parse(savedFolders);
-                folders.forEach(f => createFolderElement(f.name, f.id, f.parentId));
+            const saved = localStorage.getItem('sidebarFolders');
+            if (saved) {
+                JSON.parse(saved).forEach(f => createFolderElement(f.name, f.id, 'main-group'));
             }
         }
 
         function attachDragEvents(item) {
             const content = item.querySelector('.item-content');
             item.addEventListener('dragstart', (e) => { draggedItem = item; e.stopPropagation(); content.classList.add('dragging'); });
-            item.addEventListener('dragend', () => { content.classList.remove('dragging'); draggedItem = null; saveTreeStructure(); }); // 드래그 종료 시 저장
+            item.addEventListener('dragend', () => { content.classList.remove('dragging'); draggedItem = null; saveTreeStructure(); });
             item.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); if (content.classList.contains('folder')) content.classList.add('folder-over'); else content.classList.add('drag-over-line'); });
             item.addEventListener('dragleave', () => { content.classList.remove('folder-over'); content.classList.remove('drag-over-line'); });
             item.addEventListener('drop', (e) => {
@@ -180,7 +180,7 @@
                 content.classList.remove('folder-over'); content.classList.remove('drag-over-line');
                 if (content.classList.contains('folder')) item.querySelector('.tree-group').appendChild(draggedItem);
                 else item.parentNode.insertBefore(draggedItem, item.nextSibling);
-                saveTreeStructure(); // 이동 후 저장
+                saveTreeStructure();
             });
         }
 
@@ -191,15 +191,12 @@
                 const nickname = user.user_metadata.display_name || user.user_metadata.username || "작가";
                 const avatar = user.user_metadata.avatar_url || "";
                 localStorage.setItem('userProfile', JSON.stringify({ nickname, avatar }));
-                const nickEl = document.getElementById('nav-nickname');
-                const avaEl = document.getElementById('nav-avatar');
-                if (nickEl) nickEl.innerText = `${nickname} 작가님 ▼`;
-                if (avaEl) avaEl.src = avatar;
+                const nav = document.getElementById('auth-nav');
+                if (!document.getElementById('user-menu-trigger')) {
+                    nav.innerHTML = `<div id="user-menu-trigger" style="display:flex; align-items:center; gap:10px; cursor:pointer; position:relative;"><img src="${avatar}" id="nav-avatar" style="width:32px; height:32px; border-radius:50%; border:2px solid #87CEEB;" onerror="this.src='https://via.placeholder.com/32'"><span id="nav-nickname" style="font-weight:600;">${nickname} 작가님 ▼</span><div id="user-dropdown" class="dropdown-menu" style="position:absolute; top:100%; right:0; width:170px; background:#fff; border:1px solid #eee; display:none; flex-direction:column; padding:5px 0; border-radius:8px; box-shadow:0 5px 15px rgba(0,0,0,0.1); z-index:1000;"><div class="dropdown-item" id="go-away-btn" style="padding:12px 20px; cursor:pointer;">자리비움</div><a href="account.html" class="dropdown-item" style="text-decoration:none; color:#444; padding:8px 20px; display:block;">계정관리</a><hr style="border:0; border-top:1px solid #eee; margin:5px 0;"><div class="dropdown-item" id="logout-btn" style="color:#ff6b6b; padding:8px 20px; cursor:pointer;">로그아웃</div></div></div>`;
+                }
                 bindEvents();
-            } else {
-                localStorage.removeItem('userProfile');
-                location.href = 'login.html';
-            }
+            } else { localStorage.removeItem('userProfile'); location.href = 'login.html'; }
         }
 
         function bindEvents() {
@@ -216,20 +213,16 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             checkUser();
-            loadTreeStructure(); // 폴더 불러오기 로직 추가
-
+            loadTreeStructure();
             const sidebar = document.getElementById('sidebar');
             const toggleBtn = document.getElementById('sidebar-toggle');
-            if (localStorage.getItem('sidebarCollapsed') === 'true') {
-                toggleBtn.style.left = '0'; toggleBtn.innerText = '▶';
-            }
+            if (localStorage.getItem('sidebarCollapsed') === 'true') { toggleBtn.style.left = '0'; toggleBtn.innerText = '▶'; }
             toggleBtn.onclick = () => {
                 const collapsed = sidebar.classList.toggle('collapsed');
                 toggleBtn.innerText = collapsed ? "▶" : "◀";
                 toggleBtn.style.left = collapsed ? "0" : "280px";
                 localStorage.setItem('sidebarCollapsed', collapsed);
             };
-
             document.querySelectorAll('.tree-item').forEach(attachDragEvents);
         });
     </script>
