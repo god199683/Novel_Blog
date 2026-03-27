@@ -4,40 +4,138 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>회원가입 - Novel-Blog</title>
-    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="./css/style.css?v=999">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./js/supabase-config.js"></script>
+    <style>
+        body {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f0f8ff;
+            margin: 0;
+            font-family: 'Pretendard', sans-serif;
+        }
+        .signup-container {
+            width: 100%;
+            max-width: 400px;
+            background: #fff;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .logo {
+            font-size: 30px;
+            font-weight: bold;
+            color: #87CEEB;
+            margin-bottom: 30px;
+            cursor: pointer;
+        }
+        .input-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        .input-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 5px;
+            margin-left: 5px;
+        }
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #eee;
+            border-radius: 10px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #87CEEB;
+            box-shadow: 0 0 8px rgba(135, 206, 235, 0.2);
+        }
+        .btn-signup {
+            width: 100%;
+            padding: 15px;
+            background: #87CEEB;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: 0.3s;
+        }
+        .btn-signup:hover {
+            background: #76bddb;
+        }
+        .links {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #888;
+        }
+        .links a {
+            color: #87CEEB;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-    <div class="auth-container">
-        <h2 class="auth-title">회원가입</h2>
-        
+    <div class="signup-container">
+        <div class="logo" onclick="location.href='index.html'">Novel-Blog</div>
         <form id="signup-form">
-            <div class="profile-upload-group">
-    <label for="profile-image">
-        <img src="https://via.placeholder.com/150/87CEEB/FFFFFF?text=Click" id="preview-img" class="profile-preview">
-    </label>
-    <input type="file" id="profile-image" accept="image/*" style="display: none;">
-    <span class="profile-hint">사진을 클릭하여 선택하세요</span>
-</div>
-
-<div class="input-group">
-    <input type="text" id="username" placeholder="아이디 (영문/숫자)" required>
-</div>
-<div class="input-group">
-    <input type="text" id="nickname" placeholder="닉네임" required>
-</div>
-<div class="input-group">
-    <input type="password" id="password" placeholder="비밀번호 (6자 이상)" required>
-</div>
-
-
-            <button type="submit" class="btn btn-primary">가입하기</button>
+            <div class="input-group">
+                <label>작가 닉네임</label>
+                <input type="text" id="nickname" placeholder="사용하실 닉네임을 입력하세요" required>
+            </div>
+            <div class="input-group">
+                <label>이메일</label>
+                <input type="email" id="email" placeholder="email@example.com" required>
+            </div>
+            <div class="input-group">
+                <label>비밀번호</label>
+                <input type="password" id="password" placeholder="6자리 이상 입력하세요" required>
+            </div>
+            <button type="submit" class="btn-signup">가입하기</button>
         </form>
-
-        <p class="auth-footer">계정이 이미 있으신가요? <a href="login.html">로그인</a></p>
+        <div class="links">
+            이미 계정이 있으신가요? <a href="login.html">로그인</a>
+        </div>
     </div>
 
-    <script src="./js/auth.js"></script>
+    <script>
+        document.getElementById('signup-form').onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const nickname = document.getElementById('nickname').value;
+
+            // Supabase 회원가입 실행 (메타데이터에 닉네임 저장)
+            const { data, error } = await window.supabaseClient.auth.signUp({
+                email: email,
+                password: password,
+                options: {
+                    data: {
+                        display_name: nickname,
+                        avatar_url: `https://api.dicebear.com/7.x/adventurer/svg?seed=${nickname}`
+                    }
+                }
+            });
+
+            if (error) {
+                alert("회원가입 실패: " + error.message);
+            } else {
+                alert("회원가입이 완료되었습니다! 로그인 페이지로 이동합니다.");
+                location.href = 'login.html';
+            }
+        };
+    </script>
 </body>
 </html>
