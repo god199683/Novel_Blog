@@ -354,6 +354,16 @@ function initSidebar() {
                 toggleEl.addEventListener('click', function (e) { e.stopPropagation(); node.open = !isOpen; renderTree(); });
             }
 
+            // 메모(소설) 클릭 시 뷰어 콜백 호출
+            row.addEventListener('click', function (e) {
+                if (e.target.closest('.tree-btn') || e.target.closest('.tree-toggle') || e.target.closest('.tree-checkbox')) return;
+                if (node.type === 'memo' && window.sidebarTree && window.sidebarTree.onNodeClick) {
+                    document.querySelectorAll('.tree-row.selected').forEach(function (r) { r.classList.remove('selected'); });
+                    row.classList.add('selected');
+                    window.sidebarTree.onNodeClick(node);
+                }
+            });
+
             var labelEl = row.querySelector('.tree-label');
             if (!node.fixed) {
                 labelEl.addEventListener('dblclick', function (e) { e.stopPropagation(); startRename(node, labelEl); });
@@ -399,6 +409,14 @@ function initSidebar() {
         row.addEventListener('dragover', function (e) {
             e.preventDefault(); e.stopPropagation();
             if (!dragNode || dragNode.id === node.id || isDescendant(dragNode, node.id)) return;
+            // 카테고리는 다른 카테고리 안으로 들어갈 수 없음
+            if (dragNode.type === 'category' && (node.type === 'category' || node.type === 'folder')) {
+                clearDrop();
+                var rect2 = row.getBoundingClientRect(), y2 = e.clientY - rect2.top, zone2 = rect2.height / 2;
+                if (y2 < zone2) row.classList.add('drop-before');
+                else row.classList.add('drop-after');
+                return;
+            }
             clearDrop();
             var rect = row.getBoundingClientRect(), y = e.clientY - rect.top, zone = rect.height / 3;
             if (node.fixed) { row.classList.add('drop-inside'); }
@@ -413,6 +431,13 @@ function initSidebar() {
             if (!dragNode || dragNode.id === node.id || isDescendant(dragNode, node.id)) return;
             var rect = row.getBoundingClientRect(), y = e.clientY - rect.top, zone = rect.height / 3;
             removeNode(tree, dragNode.id);
+            // 카테고리는 다른 카테고리/폴더 안으로 들어갈 수 없음
+            if (dragNode.type === 'category' && (node.type === 'category' || node.type === 'folder')) {
+                var zone2 = rect.height / 2;
+                if (y < zone2) insertBefore(tree, dragNode, node.id);
+                else insertAfter(tree, dragNode, node.id);
+                clearDrop(); renderTree(); return;
+            }
             if (node.fixed) { if (!node.children) node.children = []; node.children.push(dragNode); node.open = true; }
             else if (y < zone) insertBefore(tree, dragNode, node.id);
             else if (y > zone * 2) insertAfter(tree, dragNode, node.id);
@@ -465,7 +490,7 @@ function initSidebar() {
         closeAddMenu();
         var menu = document.createElement('div');
         menu.className = 'tree-add-menu';
-        menu.innerHTML = '<button data-type="category">분류 추가</button><button data-type="folder">폴더 추가</button><button data-type="memo">메모 추가</button>';
+        menu.innerHTML = '<button data-type="folder">폴더 추가</button><button data-type="memo">메모 추가</button>';
         var rect = anchorEl.querySelector('.tree-btn-add').getBoundingClientRect();
         menu.style.top = rect.bottom + 4 + 'px'; menu.style.left = rect.left + 'px';
         menu.addEventListener('click', function (e) {

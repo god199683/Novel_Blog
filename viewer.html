@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>소설 뷰어 | Novel_Blog</title>
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        .viewer-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #b0cbde; font-size: 0.95rem; gap: 0.5rem; }
+        .viewer-empty svg { width: 48px; height: 48px; stroke: #d0e3f2; margin-bottom: 0.5rem; }
+    </style>
 </head>
 <body class="write-page">
     <header>
@@ -18,12 +22,20 @@
     </header>
 
     <main>
-        <nav class="page-nav" id="page-nav">
+        <nav class="page-nav">
             <a href="write.html" class="page-nav-item">작성</a>
             <a href="viewer.html" class="page-nav-item active">뷰어</a>
         </nav>
         <section class="viewer-section">
-            <div id="viewer-container" class="novel-list"></div>
+            <div id="viewer-container">
+                <div class="viewer-empty">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                    </svg>
+                    <span>사이드바에서 소설을 선택하세요</span>
+                </div>
+            </div>
         </section>
     </main>
 
@@ -38,57 +50,41 @@
         })();
 
         const container = document.getElementById('viewer-container');
-        let novels = [];
 
-        async function loadNovels() {
-            const { data, error } = await sb.from('novels').select('*').order('created_at', { ascending: false });
-            if (error) {
-                container.innerHTML = '<div class="novel-empty">소설을 불러오지 못했습니다.</div>';
+        // 사이드바 노드 클릭 시 소설 표시
+        window.sidebarTree.onNodeClick = async function (node) {
+            // novel_ 접두사로 저장된 소설 ID 추출
+            const novelId = node.id.startsWith('novel_') ? node.id.replace('novel_', '') : null;
+            if (!novelId) {
+                container.innerHTML =
+                    '<div class="novel-reader">' +
+                        '<div class="novel-reader-title">' + escapeHtml(node.name) + '</div>' +
+                        '<div class="novel-reader-meta">메모</div>' +
+                    '</div>';
                 return;
             }
-            novels = data || [];
-            showList();
-        }
 
-        function showList() {
-            if (novels.length === 0) {
-                container.innerHTML = '<div class="novel-empty">작성된 소설이 없습니다.<br>작성 페이지에서 첫 소설을 써보세요!</div>';
+            container.innerHTML = '<div class="viewer-empty"><span>불러오는 중...</span></div>';
+
+            const { data, error } = await sb.from('novels').select('*').eq('id', novelId).single();
+            if (error || !data) {
+                container.innerHTML = '<div class="viewer-empty"><span>소설을 찾을 수 없습니다.</span></div>';
                 return;
             }
-            container.className = 'novel-list';
-            container.innerHTML = novels.map((n, i) => {
-                const date = new Date(n.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
-                const tmp = document.createElement('div');
-                tmp.innerHTML = n.content || '';
-                const preview = tmp.textContent.substring(0, 100);
-                return '<div class="novel-card" data-index="' + i + '">' +
-                    '<div class="novel-card-title">' + escapeHtml(n.title) + '</div>' +
-                    '<div class="novel-card-meta">' + date + ' &middot; ' + (n.status === 'draft' ? '임시저장' : '발행됨') + '</div>' +
-                    (preview ? '<div class="novel-card-preview">' + escapeHtml(preview) + '</div>' : '') +
-                '</div>';
-            }).join('');
 
-            container.querySelectorAll('.novel-card').forEach(card => {
-                card.addEventListener('click', () => showReader(parseInt(card.dataset.index)));
+            const date = new Date(data.created_at).toLocaleDateString('ko-KR', {
+                year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
             });
-        }
 
-        function showReader(index) {
-            const n = novels[index];
-            if (!n) return;
-            const date = new Date(n.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-            container.className = 'novel-reader';
             container.innerHTML =
-                '<button class="novel-reader-back" id="back-btn">&larr; 목록으로</button>' +
-                '<div class="novel-reader-title">' + escapeHtml(n.title) + '</div>' +
-                '<div class="novel-reader-meta">' + date + '</div>' +
-                '<div class="novel-reader-content">' + (n.content || '') + '</div>';
-            document.getElementById('back-btn').addEventListener('click', showList);
-        }
+                '<div class="novel-reader">' +
+                    '<div class="novel-reader-title">' + escapeHtml(data.title) + '</div>' +
+                    '<div class="novel-reader-meta">' + date + ' · ' + (data.status === 'draft' ? '임시저장' : '발행됨') + '</div>' +
+                    '<div class="novel-reader-content">' + (data.content || '') + '</div>' +
+                '</div>';
+        };
 
         function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-        loadNovels();
     </script>
 </body>
 </html>
