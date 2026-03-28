@@ -34,6 +34,8 @@
         .toolbar-list-dropdown.show { display: block; }
         .toolbar-list-dropdown button { display: block; width: 100%; padding: 6px 10px; border: none; background: transparent; text-align: left; font-size: 0.82rem; color: #2c3e50; cursor: pointer; border-radius: 4px; white-space: nowrap; }
         .toolbar-list-dropdown button:hover { background: #f0f7fd; color: #3a9ad9; }
+        /* 저장 위치 셀렉트 */
+        .save-location-select { border: 1px solid #d0e3f2; border-radius: 6px; padding: 4px 8px; font-size: 0.82rem; color: #5a7a9a; background: #fff; outline: none; cursor: pointer; max-width: 160px; }
     </style>
 </head>
 <body class="write-page">
@@ -48,9 +50,16 @@
     </header>
 
     <main>
+        <nav class="page-nav" id="page-nav">
+            <a href="write.html" class="page-nav-item active">작성</a>
+            <a href="viewer.html" class="page-nav-item">뷰어</a>
+        </nav>
         <section class="write-section">
             <div class="write-header">
                 <input type="text" class="write-title-input" id="novel-title" placeholder="제목" required>
+                <select id="save-location" class="save-location-select" title="저장 위치">
+                    <option value="">전체</option>
+                </select>
                 <button class="write-save-btn" id="save-btn">저장</button>
             </div>
             <div class="write-header" style="border-bottom: 1px solid #e8f2fb; padding-top:0;">
@@ -168,24 +177,43 @@
             if (e.key === 'Tab') { e.preventDefault(); document.execCommand('insertText', false, '    '); }
         });
 
+        // 저장 위치 옵션 갱신
+        function refreshLocationOptions() {
+            const sel = document.getElementById('save-location');
+            sel.innerHTML = '<option value="">전체</option>';
+            if (window.sidebarTree) {
+                window.sidebarTree.getContainers().forEach(c => {
+                    sel.innerHTML += '<option value="' + c.id + '">' + c.indent + c.name + '</option>';
+                });
+            }
+        }
+        setTimeout(refreshLocationOptions, 500);
+        document.getElementById('save-location').addEventListener('focus', refreshLocationOptions);
+
         document.getElementById('save-btn').addEventListener('click', async () => {
             const btn = document.getElementById('save-btn');
             btn.disabled = true;
             btn.textContent = '저장 중...';
 
             const { data: { session } } = await sb.auth.getSession();
+            const title = document.getElementById('novel-title').value || '제목 없음';
             const novel = {
                 user_id: session.user.id,
-                title: document.getElementById('novel-title').value || '제목 없음',
+                title: title,
                 content: editor.innerHTML,
                 status: 'draft',
                 created_at: new Date().toISOString()
             };
 
-            const { error } = await sb.from('novels').insert([novel]);
+            const { data, error } = await sb.from('novels').insert([novel]).select();
             if (error) {
                 btn.textContent = '저장 실패';
             } else {
+                const locationId = document.getElementById('save-location').value || null;
+                const novelId = data && data[0] ? data[0].id : Date.now();
+                if (window.sidebarTree) {
+                    window.sidebarTree.addNovelNode(locationId, novelId, title);
+                }
                 document.getElementById('save-status').textContent = '저장됨 ' + new Date().toLocaleTimeString();
             }
             btn.disabled = false;

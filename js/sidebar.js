@@ -217,11 +217,24 @@ function initSidebar() {
             var action = ev.target.dataset.action;
             if (!action) return;
             if (action === 'add-category') {
-                tree.push({ id: genId(), type: 'category', name: '새 분류', open: true, children: [] });
-                closeAddMenu(); renderTree();
+                closeAddMenu();
+                showNamePrompt('카테고리 이름', function (name) {
+                    tree.push({ id: genId(), type: 'category', name: name, open: true, children: [] });
+                    renderTree();
+                });
             } else if (action === 'add-folder') {
-                tree.push({ id: genId(), type: 'folder', name: '새 폴더', open: true, children: [] });
-                closeAddMenu(); renderTree();
+                closeAddMenu();
+                showFolderAddDialog(function (name, parentId) {
+                    var newFolder = { id: genId(), type: 'folder', name: name, open: true, children: [] };
+                    if (parentId) {
+                        var parent = findNodeById(tree, parentId);
+                        if (parent) { if (!parent.children) parent.children = []; parent.children.push(newFolder); parent.open = true; }
+                        else tree.push(newFolder);
+                    } else {
+                        tree.push(newFolder);
+                    }
+                    renderTree();
+                });
             } else if (action === 'export-all') {
                 var blob = new Blob([JSON.stringify(tree, null, 2)], { type: 'application/json' });
                 var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
@@ -468,6 +481,115 @@ function initSidebar() {
 
     function closeAddMenu() { var m = document.querySelector('.tree-add-menu'); if (m) m.remove(); }
     function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    function findNodeById(nodes, id) {
+        for (var i = 0; i < nodes.length; i++) {
+            if (nodes[i].id === id) return nodes[i];
+            if (nodes[i].children) { var r = findNodeById(nodes[i].children, id); if (r) return r; }
+        }
+        return null;
+    }
+
+    // 이름 입력 프롬프트 (모달)
+    function showNamePrompt(title, callback) {
+        var overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML =
+            '<div class="modal-dialog">' +
+                '<div class="modal-title">' + title + '</div>' +
+                '<input type="text" class="modal-input" placeholder="이름 입력" autofocus>' +
+                '<div class="modal-actions">' +
+                    '<button class="modal-btn modal-btn-cancel">취소</button>' +
+                    '<button class="modal-btn modal-btn-confirm">확인</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+        var input = overlay.querySelector('.modal-input');
+        input.focus();
+        function close() { overlay.remove(); }
+        overlay.querySelector('.modal-btn-cancel').addEventListener('click', close);
+        overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+        overlay.querySelector('.modal-btn-confirm').addEventListener('click', function () {
+            var v = input.value.trim();
+            if (v) { callback(v); }
+            close();
+        });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { var v = input.value.trim(); if (v) callback(v); close(); }
+            if (e.key === 'Escape') close();
+        });
+    }
+
+    // 폴더 추가 다이얼로그 (이름 + 카테고리 선택)
+    function showFolderAddDialog(callback) {
+        var overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        var options = '<option value="">최상위</option>';
+        collectContainers(tree, options = [], 0);
+        var optHtml = '<option value="">최상위</option>';
+        options.forEach(function (o) { optHtml += '<option value="' + o.id + '">' + o.indent + escapeHtml(o.name) + '</option>'; });
+        overlay.innerHTML =
+            '<div class="modal-dialog">' +
+                '<div class="modal-title">폴더 추가</div>' +
+                '<input type="text" class="modal-input" placeholder="폴더 이름" autofocus>' +
+                '<label class="modal-label">위치</label>' +
+                '<select class="modal-select">' + optHtml + '</select>' +
+                '<div class="modal-actions">' +
+                    '<button class="modal-btn modal-btn-cancel">취소</button>' +
+                    '<button class="modal-btn modal-btn-confirm">확인</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+        var input = overlay.querySelector('.modal-input');
+        var select = overlay.querySelector('.modal-select');
+        input.focus();
+        function close() { overlay.remove(); }
+        overlay.querySelector('.modal-btn-cancel').addEventListener('click', close);
+        overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+        overlay.querySelector('.modal-btn-confirm').addEventListener('click', function () {
+            var v = input.value.trim();
+            if (v) callback(v, select.value || null);
+            close();
+        });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { var v = input.value.trim(); if (v) callback(v, select.value || null); close(); }
+            if (e.key === 'Escape') close();
+        });
+    }
+
+    function collectContainers(nodes, result, depth) {
+        nodes.forEach(function (n) {
+            if (n.type === 'category' || n.type === 'folder') {
+                var indent = '';
+                for (var i = 0; i < depth; i++) indent += '\u00A0\u00A0';
+                result.push({ id: n.id, name: n.name, indent: indent });
+                if (n.children) collectContainers(n.children, result, depth + 1);
+            }
+        });
+    }
+
+    // 외부에서 트리 데이터 접근용 API
+    window.sidebarTree = {
+        getTree: function () { return tree; },
+        getContainers: function () {
+            var result = [];
+            collectContainers(tree, result, 0);
+            return result;
+        },
+        addNovelNode: function (parentId, novelId, title) {
+            var node = { id: 'novel_' + novelId, type: 'memo', name: title };
+            if (parentId) {
+                var parent = findNodeById(tree, parentId);
+                if (parent) { if (!parent.children) parent.children = []; parent.children.push(node); parent.open = true; }
+                else tree.push(node);
+            } else {
+                var allCat = findNodeById(tree, '_all');
+                if (allCat) { allCat.children.push(node); }
+                else tree.push(node);
+            }
+            renderTree();
+        }
+    };
 
     renderTree();
 }

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>소설 뷰어 | Novel_Blog</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="write-page">
+    <header>
+        <nav class="navbar">
+            <a href="index.html" class="logo">Novel_Blog</a>
+            <ul class="nav-links">
+                <li><a href="login.html" class="login-btn">로그인</a></li>
+                <li><a href="signup.html" class="signup-btn">회원가입</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <nav class="page-nav" id="page-nav">
+            <a href="write.html" class="page-nav-item">작성</a>
+            <a href="viewer.html" class="page-nav-item active">뷰어</a>
+        </nav>
+        <section class="viewer-section">
+            <div id="viewer-container" class="novel-list"></div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        (async () => {
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) window.location.href = 'login.html';
+        })();
+
+        const container = document.getElementById('viewer-container');
+        let novels = [];
+
+        async function loadNovels() {
+            const { data, error } = await sb.from('novels').select('*').order('created_at', { ascending: false });
+            if (error) {
+                container.innerHTML = '<div class="novel-empty">소설을 불러오지 못했습니다.</div>';
+                return;
+            }
+            novels = data || [];
+            showList();
+        }
+
+        function showList() {
+            if (novels.length === 0) {
+                container.innerHTML = '<div class="novel-empty">작성된 소설이 없습니다.<br>작성 페이지에서 첫 소설을 써보세요!</div>';
+                return;
+            }
+            container.className = 'novel-list';
+            container.innerHTML = novels.map((n, i) => {
+                const date = new Date(n.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+                const tmp = document.createElement('div');
+                tmp.innerHTML = n.content || '';
+                const preview = tmp.textContent.substring(0, 100);
+                return '<div class="novel-card" data-index="' + i + '">' +
+                    '<div class="novel-card-title">' + escapeHtml(n.title) + '</div>' +
+                    '<div class="novel-card-meta">' + date + ' &middot; ' + (n.status === 'draft' ? '임시저장' : '발행됨') + '</div>' +
+                    (preview ? '<div class="novel-card-preview">' + escapeHtml(preview) + '</div>' : '') +
+                '</div>';
+            }).join('');
+
+            container.querySelectorAll('.novel-card').forEach(card => {
+                card.addEventListener('click', () => showReader(parseInt(card.dataset.index)));
+            });
+        }
+
+        function showReader(index) {
+            const n = novels[index];
+            if (!n) return;
+            const date = new Date(n.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            container.className = 'novel-reader';
+            container.innerHTML =
+                '<button class="novel-reader-back" id="back-btn">&larr; 목록으로</button>' +
+                '<div class="novel-reader-title">' + escapeHtml(n.title) + '</div>' +
+                '<div class="novel-reader-meta">' + date + '</div>' +
+                '<div class="novel-reader-content">' + (n.content || '') + '</div>';
+            document.getElementById('back-btn').addEventListener('click', showList);
+        }
+
+        function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+        loadNovels();
+    </script>
+</body>
+</html>
