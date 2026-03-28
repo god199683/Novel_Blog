@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>소설 작성 | Novel_Blog</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .editor-toolbar { display: flex; flex-wrap: wrap; gap: 2px; padding: 6px 12px; background: #f7fbff; border-bottom: 1px solid #e8f2fb; flex-shrink: 0; }
+        .editor-toolbar button { width: 30px; height: 30px; border: none; background: transparent; cursor: pointer; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #5a7a9a; font-size: 0.85rem; font-weight: 700; font-family: serif; transition: all 0.15s; }
+        .editor-toolbar button:hover { background: #e8f2fb; color: #3a9ad9; }
+        .editor-toolbar button.active { background: #3a9ad9; color: #fff; }
+        .editor-toolbar .toolbar-divider { width: 1px; background: #d0e3f2; margin: 4px 3px; }
+        .editor-content { flex: 1; padding: 20px; outline: none; font-size: 1rem; line-height: 2; color: #2c3e50; overflow-y: auto; }
+        .editor-content:focus { background: #fafcff; }
+        .editor-content p { margin-bottom: 0.5em; }
+        .editor-content blockquote { border-left: 3px solid #3a9ad9; padding-left: 1em; color: #5a7a9a; margin: 0.5em 0; }
+        .editor-status { display: flex; justify-content: space-between; padding: 4px 12px; color: #7a9ab5; font-size: 0.78rem; border-top: 1px solid #e8f2fb; flex-shrink: 0; }
+        /* 글씨체 셀렉트 */
+        .toolbar-select-wrap select { border: 1px solid #d0e3f2; border-radius: 4px; padding: 3px 6px; font-size: 0.78rem; color: #5a7a9a; background: #fff; outline: none; cursor: pointer; height: 28px; }
+        .toolbar-select-wrap select:hover { border-color: #3a9ad9; }
+        /* 컬러 피커 */
+        .toolbar-color-wrap { display: flex; align-items: center; }
+        .toolbar-color-label { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; cursor: pointer; border-radius: 6px; font-weight: 700; font-size: 0.85rem; color: #5a7a9a; position: relative; font-family: serif; }
+        .toolbar-color-label:hover { background: #e8f2fb; color: #3a9ad9; }
+        .toolbar-color-label input[type="color"] { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 20px; height: 4px; border: none; padding: 0; cursor: pointer; opacity: 0.8; }
+        .toolbar-highlight-label svg { color: #5a7a9a; }
+        .toolbar-highlight-label:hover svg { color: #3a9ad9; }
+        /* 목록 드롭다운 */
+        .toolbar-list-wrap { position: relative; display: inline-flex; }
+        .toolbar-list-btn { width: 30px; height: 30px; border: none; background: transparent; cursor: pointer; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #5a7a9a; font-size: 1rem; font-weight: 700; transition: all 0.15s; }
+        .toolbar-list-btn:hover { background: #e8f2fb; color: #3a9ad9; }
+        .toolbar-list-dropdown { display: none; position: absolute; top: 100%; left: 0; background: #fff; border: 1px solid #e0eef9; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 100; padding: 4px; min-width: 140px; }
+        .toolbar-list-dropdown.show { display: block; }
+        .toolbar-list-dropdown button { display: block; width: 100%; padding: 6px 10px; border: none; background: transparent; text-align: left; font-size: 0.82rem; color: #2c3e50; cursor: pointer; border-radius: 4px; white-space: nowrap; }
+        .toolbar-list-dropdown button:hover { background: #f0f7fd; color: #3a9ad9; }
+    </style>
+</head>
+<body class="write-page">
+    <header>
+        <nav class="navbar">
+            <a href="index.html" class="logo">Novel_Blog</a>
+            <ul class="nav-links">
+                <li><a href="login.html" class="login-btn">로그인</a></li>
+                <li><a href="signup.html" class="signup-btn">회원가입</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="write-section">
+            <div class="write-header">
+                <input type="text" class="write-title-input" id="novel-title" placeholder="제목" required>
+                <button class="write-save-btn" id="save-btn">저장</button>
+            </div>
+            <div class="write-header" style="border-bottom: 1px solid #e8f2fb; padding-top:0;">
+                <input type="text" class="write-subtitle-input" id="novel-subtitle" placeholder="부제목 (선택)">
+            </div>
+
+            <div class="write-body">
+                <div class="editor-toolbar" id="editor-toolbar">
+                    <button type="button" data-cmd="bold" title="굵게"><b>B</b></button>
+                    <button type="button" data-cmd="italic" title="기울임"><i>I</i></button>
+                    <button type="button" data-cmd="underline" title="밑줄"><u>U</u></button>
+                    <span class="toolbar-divider"></span>
+                    <div class="toolbar-select-wrap">
+                        <select id="font-family-select" title="글씨체">
+                            <option value="">글씨체</option>
+                            <option value="'Malgun Gothic', '맑은 고딕'">맑은 고딕</option>
+                            <option value="'Noto Sans KR', sans-serif">Noto Sans</option>
+                            <option value="'Nanum Gothic', sans-serif">나눔고딕</option>
+                            <option value="'Nanum Myeongjo', serif">나눔명조</option>
+                            <option value="Georgia, serif">Georgia</option>
+                            <option value="monospace">Monospace</option>
+                        </select>
+                    </div>
+                    <span class="toolbar-divider"></span>
+                    <div class="toolbar-color-wrap" title="글씨 색">
+                        <label class="toolbar-color-label">A<input type="color" id="font-color-picker" value="#000000"></label>
+                    </div>
+                    <div class="toolbar-color-wrap" title="텍스트 배경색">
+                        <label class="toolbar-color-label toolbar-highlight-label">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                            <input type="color" id="highlight-color-picker" value="#FFFF00">
+                        </label>
+                    </div>
+                    <span class="toolbar-divider"></span>
+                    <div class="toolbar-list-wrap">
+                        <button type="button" class="toolbar-list-btn" id="list-toggle" title="목록">&#x2022;</button>
+                        <div class="toolbar-list-dropdown" id="list-dropdown">
+                            <button type="button" data-cmd="insertUnorderedList" title="글머리 기호">&#x2022; 글머리 기호</button>
+                            <button type="button" data-cmd="insertOrderedList" title="번호 매기기">1. 번호 매기기</button>
+                        </div>
+                    </div>
+                    <button type="button" data-cmd="insertHorizontalRule" title="구분선">&#x2015;</button>
+                    <span class="toolbar-divider"></span>
+                    <button type="button" data-cmd="justifyLeft" title="왼쪽">&#x2261;</button>
+                    <button type="button" data-cmd="justifyCenter" title="가운데">&#x2263;</button>
+                    <button type="button" data-cmd="justifyRight" title="오른쪽">&#x2262;</button>
+                    <span class="toolbar-divider"></span>
+                    <button type="button" data-cmd="undo" title="취소">&#x21A9;</button>
+                    <button type="button" data-cmd="redo" title="다시">&#x21AA;</button>
+                </div>
+                <div class="editor-content" id="editor-content" contenteditable="true"></div>
+                <div class="editor-status">
+                    <span><span id="char-count">0</span>자</span>
+                    <span id="save-status"></span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        (async () => {
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) window.location.href = 'login.html';
+        })();
+
+        const editor = document.getElementById('editor-content');
+        const charCount = document.getElementById('char-count');
+
+        document.getElementById('editor-toolbar').addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-cmd]');
+            if (!btn) return;
+            e.preventDefault();
+            document.execCommand(btn.dataset.cmd, false, btn.dataset.value || null);
+            editor.focus();
+        });
+
+        // 글씨체 변경
+        document.getElementById('font-family-select').addEventListener('change', (e) => {
+            if (e.target.value) {
+                document.execCommand('fontName', false, e.target.value);
+                editor.focus();
+            }
+        });
+
+        // 글씨 색 변경
+        document.getElementById('font-color-picker').addEventListener('input', (e) => {
+            document.execCommand('foreColor', false, e.target.value);
+            editor.focus();
+        });
+
+        // 텍스트 배경색 변경
+        document.getElementById('highlight-color-picker').addEventListener('input', (e) => {
+            document.execCommand('hiliteColor', false, e.target.value);
+            editor.focus();
+        });
+
+        // 목록 드롭다운 토글
+        document.getElementById('list-toggle').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('list-dropdown').classList.toggle('show');
+        });
+        document.addEventListener('click', () => {
+            document.getElementById('list-dropdown').classList.remove('show');
+        });
+
+        editor.addEventListener('input', () => {
+            charCount.textContent = editor.innerText.replace(/\n/g, '').length.toLocaleString();
+        });
+
+        editor.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') { e.preventDefault(); document.execCommand('insertText', false, '    '); }
+        });
+
+        document.getElementById('save-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('save-btn');
+            btn.disabled = true;
+            btn.textContent = '저장 중...';
+
+            const { data: { session } } = await sb.auth.getSession();
+            const novel = {
+                user_id: session.user.id,
+                title: document.getElementById('novel-title').value || '제목 없음',
+                subtitle: document.getElementById('novel-subtitle').value,
+                content: editor.innerHTML,
+                status: 'draft',
+                author_nickname: session.user.user_metadata?.nickname || '익명',
+                created_at: new Date().toISOString()
+            };
+
+            const { error } = await sb.from('novels').insert([novel]);
+            if (error) {
+                btn.textContent = '저장 실패';
+            } else {
+                document.getElementById('save-status').textContent = '저장됨 ' + new Date().toLocaleTimeString();
+            }
+            btn.disabled = false;
+            btn.textContent = '저장';
+        });
+    </script>
+</body>
+</html>
