@@ -1,0 +1,5 @@
+const SUPABASE_URL = 'https://eigrpxjrfmvefcbdtxxz.supabase.co'
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpZ3JweGpyZm12ZWZjYmR0eHh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTI1MTAsImV4cCI6MjA5MDI2ODUxMH0.Ue7NYdcndnOhOd_sLgCYeNNQPTSkUwlmKytNLHEtbHk'
+
+const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+window.sb = _sb

@@ -1,11 +1,22 @@
-// Supabase 라이브러리 로드 (CDN 방식)
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+// 로그인 상태 확인 및 UI 업데이트
+async function checkAuth() {
+    const { data: { session } } = await sb.auth.getSession();
+    const navLinks = document.querySelector('.nav-links');
+    if (!navLinks) return;
 
-const supabaseUrl = 'https://smmirfcmpufnhsemduoc.supabase.co'
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtbWlyZmNtcHVmbmhzZW1kdW9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MTU1MzEsImV4cCI6MjA5MDE5MTUzMX0.fYe_LLqL-FxYyxexY3inl1rU_au3v8ffeVGt-3iG5lM
+    if (session) {
+        const user = session.user;
+        const nickname = user.user_metadata?.nickname || user.user_metadata?.user_id || '사용자';
+        navLinks.innerHTML =
+            '<li><span class="welcome-text">' + nickname + '님</span></li>' +
+            '<li><a href="#" class="login-btn" id="logout-btn">로그아웃</a></li>';
 
-'
-const supabase = createClient(supabaseUrl, supabaseKey)
+        document.getElementById('logout-btn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            await sb.auth.signOut();
+            location.reload();
+        });
+    }
+}
 
-// 연결 확인용 테스트
-console.log("Supabase connected!");
+checkAuth();
