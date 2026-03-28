@@ -177,10 +177,8 @@
             const novel = {
                 user_id: session.user.id,
                 title: document.getElementById('novel-title').value || '제목 없음',
-                subtitle: document.getElementById('novel-subtitle').value,
                 content: editor.innerHTML,
                 status: 'draft',
-                author_nickname: session.user.user_metadata?.nickname || '익명',
                 created_at: new Date().toISOString()
             };
 
