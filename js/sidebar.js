@@ -371,13 +371,19 @@ function initSidebar() {
                 toggleEl.addEventListener('click', function (e) { e.stopPropagation(); node.open = !isOpen; renderTree(); });
             }
 
-            // 메모(소설) 클릭 시 뷰어 콜백 호출
+            // 메모(소설) 클릭 시 뷰어로 이동 또는 콜백 호출
             row.addEventListener('click', function (e) {
                 if (e.target.closest('.tree-btn') || e.target.closest('.tree-toggle') || e.target.closest('.tree-checkbox')) return;
-                if (node.type === 'memo' && window.sidebarTree && window.sidebarTree.onNodeClick) {
+                if (node.type === 'memo') {
                     document.querySelectorAll('.tree-row.selected').forEach(function (r) { r.classList.remove('selected'); });
                     row.classList.add('selected');
-                    window.sidebarTree.onNodeClick(node);
+                    if (window.sidebarTree && window.sidebarTree.onNodeClick) {
+                        window.sidebarTree.onNodeClick(node);
+                    } else if (node.id && node.id.indexOf('novel_') === 0) {
+                        // 뷰어 페이지가 아닌 경우 뷰어로 이동
+                        var nid = node.id.replace('novel_', '');
+                        window.location.href = 'viewer?novel=' + nid;
+                    }
                 }
             });
 

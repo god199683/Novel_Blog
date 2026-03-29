@@ -145,6 +145,9 @@
             });
 
             await loadNovels();
+
+            // 페이지 포커스 시 목록 갱신 (불러오기 등 반영)
+            window.addEventListener('focus', loadNovels);
         })();
     </script>
 </body>

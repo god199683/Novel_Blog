@@ -86,6 +86,13 @@
         };
 
         function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+        // URL 파라미터로 소설 자동 로드
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('novel')) {
+            const novelId = urlParams.get('novel');
+            window.sidebarTree.onNodeClick({ id: 'novel_' + novelId, type: 'memo', name: '' });
+        }
     </script>
 </body>
 </html>
