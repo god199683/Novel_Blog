@@ -210,9 +210,9 @@ body { background-color: #ffffff; color: #333; line-height: 1.6; }
 
 /* 사이드바 있는 페이지 레이아웃 */
 .has-sidebar .navbar { z-index: 95; }
-.has-sidebar main { margin-left: 260px; transition: margin-left 0.3s ease; }
+.has-sidebar main { margin-left: 260px; width: calc(100% - 260px); transition: margin-left 0.3s ease, width 0.3s ease; }
 .has-sidebar footer { margin-left: 260px; transition: margin-left 0.3s ease; }
-.has-sidebar.sidebar-closed main { margin-left: 0; }
+.has-sidebar.sidebar-closed main { margin-left: 0; width: 100%; }
 .has-sidebar.sidebar-closed footer { margin-left: 0; }
 
 /* 프로필 영역 (네비바) */

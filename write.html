@@ -266,9 +266,12 @@
                         window.sidebarTree.addNovelNode(locationId, novelId, title);
                     }
                     document.getElementById('save-status').textContent = '저장됨 ' + new Date().toLocaleTimeString();
-                    // 저장 후 수정 모드로 전환
-                    if (data && data[0]) editingNovelId = data[0].id;
-                    btn.textContent = '수정 저장';
+                    // 저장 후 에디터 초기화 (새 글 모드 유지)
+                    document.getElementById('novel-title').value = '';
+                    document.getElementById('novel-subtitle').value = '';
+                    editor.innerHTML = '';
+                    charCount.textContent = '0';
+                    btn.textContent = '저장';
                 }
             }
             btn.disabled = false;
