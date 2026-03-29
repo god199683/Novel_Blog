@@ -47,20 +47,95 @@ async function checkAuth() {
             window.location.href = 'index.html';
         });
 
-        // 자리비움
+        // 자리비움 오버레이
         document.getElementById('btn-away').addEventListener('click', () => {
-            const btn = document.getElementById('btn-away');
-            const isAway = btn.textContent === '자리비움 해제';
-            btn.textContent = isAway ? '자리비움' : '자리비움 해제';
             dropdown.classList.remove('show');
+            showAwayOverlay();
         });
 
         // 계정 관리
         document.getElementById('btn-account').addEventListener('click', () => {
             dropdown.classList.remove('show');
-            // TODO: 계정 관리 페이지로 이동
+            showAccountModal();
         });
     }
 }
 
 checkAuth();
+
+// ── 자리비움 오버레이 ──
+function showAwayOverlay() {
+    const storedPin = localStorage.getItem('away-pin') || '';
+    const overlay = document.createElement('div');
+    overlay.className = 'away-overlay';
+    overlay.innerHTML =
+        '<div class="away-message">자리비움 모드</div>' +
+        '<input type="password" class="away-pin-input" placeholder="PIN" maxlength="6" autofocus>' +
+        '<button class="away-confirm-btn">확인</button>' +
+        (storedPin ? '' : '<div class="away-message">PIN이 설정되지 않았습니다. Enter를 누르면 돌아갑니다.</div>');
+    document.body.appendChild(overlay);
+
+    const input = overlay.querySelector('.away-pin-input');
+    const confirmBtn = overlay.querySelector('.away-confirm-btn');
+    input.focus();
+
+    function tryUnlock() {
+        if (!storedPin) {
+            overlay.remove(); return;
+        }
+        if (input.value === storedPin) {
+            overlay.remove();
+        } else {
+            input.value = '';
+            input.style.borderColor = '#dc2626';
+            setTimeout(() => { input.style.borderColor = ''; }, 800);
+        }
+    }
+
+    confirmBtn.addEventListener('click', tryUnlock);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
+}
+
+// ── 계정 관리 모달 (PIN 설정) ──
+function showAccountModal() {
+    const currentPin = localStorage.getItem('away-pin') || '';
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+        '<div class="modal-dialog">' +
+            '<div class="modal-title">계정 관리</div>' +
+            '<label class="modal-label">자리비움 PIN (6자리 숫자)</label>' +
+            '<input type="password" class="modal-input" id="pin-input" placeholder="6자리 숫자 입력" maxlength="6" value="' + currentPin + '">' +
+            '<div class="modal-actions">' +
+                '<button class="modal-btn modal-btn-cancel" id="pin-cancel">취소</button>' +
+                '<button class="modal-btn modal-btn-confirm" id="pin-save">저장</button>' +
+            '</div>' +
+        '</div>';
+    document.body.appendChild(overlay);
+
+    const pinInput = overlay.querySelector('#pin-input');
+    pinInput.focus();
+    pinInput.addEventListener('input', () => {
+        pinInput.value = pinInput.value.replace(/[^0-9]/g, '');
+    });
+
+    overlay.querySelector('#pin-cancel').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    overlay.querySelector('#pin-save').addEventListener('click', () => {
+        const val = pinInput.value.trim();
+        if (val && val.length !== 6) {
+            alert('PIN은 6자리 숫자여야 합니다.');
+            return;
+        }
+        if (val) {
+            localStorage.setItem('away-pin', val);
+        } else {
+            localStorage.removeItem('away-pin');
+        }
+        overlay.remove();
+    });
+    pinInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') overlay.querySelector('#pin-save').click();
+        if (e.key === 'Escape') overlay.remove();
+    });
+}

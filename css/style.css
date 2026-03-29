@@ -288,5 +288,19 @@ body { background-color: #ffffff; color: #333; line-height: 1.6; }
     .stat-number { font-size: 1.8rem; }
 }
 
+/* 자리비움 오버레이 */
+.away-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; }
+.away-pin-input { width: 200px; padding: 12px; text-align: center; font-size: 1.5rem; letter-spacing: 8px; border: 2px solid #5a7a9a; border-radius: 12px; background: rgba(255,255,255,0.1); color: #fff; outline: none; font-family: inherit; transition: border-color 0.3s; }
+.away-pin-input:focus { border-color: #3a9ad9; }
+.away-pin-input::placeholder { color: rgba(255,255,255,0.3); letter-spacing: 2px; font-size: 1rem; }
+.away-confirm-btn { padding: 10px 30px; background: #3a9ad9; color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; font-family: inherit; }
+.away-confirm-btn:hover { background: #2b82c1; }
+.away-message { color: rgba(255,255,255,0.5); font-size: 0.85rem; }
+
+/* 소설 선택 모달 리스트 */
+.modal-novel-list { max-height: 300px; overflow-y: auto; margin-bottom: 1rem; }
+.modal-novel-item { display: block; width: 100%; padding: 10px 14px; border: 1px solid #e8f2fb; background: #fff; text-align: left; font-size: 0.9rem; color: #2c3e50; cursor: pointer; border-radius: 8px; margin-bottom: 4px; font-family: inherit; transition: all 0.15s; }
+.modal-novel-item:hover { background: #f0f7fd; border-color: #3a9ad9; color: #3a9ad9; }
+
 /* 푸터 */
 footer { text-align: center; padding: 2rem; background: #f0f7fd; color: #7a9ab5; font-size: 0.9rem; border-top: 1px solid #e0eef9; }

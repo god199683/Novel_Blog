@@ -23,7 +23,7 @@
                 <h1>당신의 상상이 소설이 되는 공간</h1>
                 <p>누구나 작가가 되고, 누구나 독자가 되는 특별한 블로그를 만나보세요.</p>
                 <div class="cta-buttons">
-                    <a href="signup.html" class="btn-primary">지금 시작하기</a>
+                    <a href="#" class="btn-primary" id="btn-start" onclick="startApp(event)">지금 시작하기</a>
                 </div>
             </div>
         </section>
@@ -36,5 +36,12 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase.js"></script>
     <script src="js/main.js"></script>
+    <script>
+        async function startApp(e) {
+            e.preventDefault();
+            const { data: { session } } = await sb.auth.getSession();
+            window.location.href = session ? 'write.html' : 'login.html';
+        }
+    </script>
 </body>
 </html>

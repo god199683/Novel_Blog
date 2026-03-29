@@ -114,22 +114,35 @@ function initSidebar() {
         renderTree();
     });
 
-    // 전체 삭제 (고정 항목 제외)
-    toolboxPanel.querySelector('#tool-delete-all').addEventListener('click', function () {
+    // 전체 삭제 (고정 항목 제외, Supabase 동기화)
+    toolboxPanel.querySelector('#tool-delete-all').addEventListener('click', async function () {
         if (!confirm('기본 카테고리를 제외한 모든 항목을 삭제하시겠습니까?')) return;
+        var novelIds = [];
+        tree.forEach(function (n) { if (!n.fixed) novelIds = novelIds.concat(collectNovelIds(n)); });
         deleteNonFixed(tree);
         selectedIds = {};
         renderTree();
+        if (novelIds.length > 0 && window.sb) {
+            for (var i = 0; i < novelIds.length; i++) { await sb.from('novels').delete().eq('id', novelIds[i]); }
+        }
     });
 
-    // 선택 항목 삭제
-    toolboxPanel.querySelector('#tool-delete-sel').addEventListener('click', function () {
+    // 선택 항목 삭제 (Supabase 동기화)
+    toolboxPanel.querySelector('#tool-delete-sel').addEventListener('click', async function () {
         var ids = Object.keys(selectedIds);
         if (ids.length === 0) return;
         if (!confirm(ids.length + '개 항목을 삭제하시겠습니까?')) return;
-        ids.forEach(function (id) { removeNode(tree, id); });
+        var novelIds = [];
+        ids.forEach(function (id) {
+            var node = findNodeById(tree, id);
+            if (node) novelIds = novelIds.concat(collectNovelIds(node));
+            removeNode(tree, id);
+        });
         selectedIds = {};
         renderTree();
+        if (novelIds.length > 0 && window.sb) {
+            for (var i = 0; i < novelIds.length; i++) { await sb.from('novels').delete().eq('id', novelIds[i]); }
+        }
     });
 
     // 오름차순 정렬
@@ -236,30 +249,36 @@ function initSidebar() {
                     renderTree();
                 });
             } else if (action === 'export-all') {
-                var blob = new Blob([JSON.stringify(tree, null, 2)], { type: 'application/json' });
-                var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-                a.download = 'sidebar-tree.json'; a.click(); closeAddMenu();
+                closeAddMenu();
+                var allNovelIds = [];
+                function gatherAll(nodes) { nodes.forEach(function (n) { if (n.id && n.id.indexOf('novel_') === 0) allNovelIds.push(n.id.replace('novel_', '')); if (n.children) gatherAll(n.children); }); }
+                gatherAll(tree);
+                exportNovelsAsText(allNovelIds);
             } else if (action === 'export-selected') {
                 var ids = Object.keys(selectedIds);
                 if (ids.length === 0) { alert('선택된 항목이 없습니다.'); return; }
-                var selected = extractNodes(tree, ids);
-                var blob = new Blob([JSON.stringify(selected, null, 2)], { type: 'application/json' });
-                var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-                a.download = 'sidebar-selected.json'; a.click(); closeAddMenu();
+                closeAddMenu();
+                var selNovelIds = [];
+                ids.forEach(function (id) { var n = findNodeById(tree, id); if (n) selNovelIds = selNovelIds.concat(collectNovelIds(n)); });
+                exportNovelsAsText(selNovelIds);
             } else if (action === 'import') {
-                var input = document.createElement('input'); input.type = 'file'; input.accept = '.json';
+                closeAddMenu();
+                var input = document.createElement('input'); input.type = 'file'; input.accept = '.txt';
                 input.addEventListener('change', function () {
                     var file = input.files[0]; if (!file) return;
                     var reader = new FileReader();
-                    reader.onload = function (ev) {
-                        try {
-                            var imported = JSON.parse(ev.target.result);
-                            if (Array.isArray(imported)) { imported.forEach(function (n) { tree.push(n); }); renderTree(); }
-                        } catch (err) { alert('파일 형식이 올바르지 않습니다.'); }
-                    };
+                    reader.onload = function (ev) { importNovelsFromText(ev.target.result); };
                     reader.readAsText(file);
                 });
-                input.click(); closeAddMenu();
+                input.click();
+            } else if (action === 'edit') {
+                closeAddMenu();
+                showNovelPicker(function (novelId) {
+                    window.location.href = 'write?edit=' + novelId;
+                });
+            } else if (action === 'manage-page') {
+                closeAddMenu();
+                window.location.href = 'manage.html';
             } else {
                 closeAddMenu();
             }
@@ -378,7 +397,11 @@ function initSidebar() {
             if (delBtn) {
                 delBtn.addEventListener('click', function (e) {
                     e.stopPropagation();
-                    if (confirm('"' + node.name + '" 삭제?')) { removeNode(tree, node.id); delete selectedIds[node.id]; renderTree(); }
+                    if (confirm('"' + node.name + '" 삭제?')) {
+                        // 소설 노드면 Supabase에서도 삭제
+                        deleteNodeWithSupabase(node);
+                        removeNode(tree, node.id); delete selectedIds[node.id]; renderTree();
+                    }
                 });
             }
 
@@ -513,6 +536,155 @@ function initSidebar() {
             if (nodes[i].children) { var r = findNodeById(nodes[i].children, id); if (r) return r; }
         }
         return null;
+    }
+
+    // ── Supabase 삭제 헬퍼 ──
+    function collectNovelIds(node) {
+        var ids = [];
+        if (node.id && node.id.indexOf('novel_') === 0) {
+            ids.push(node.id.replace('novel_', ''));
+        }
+        if (node.children) {
+            node.children.forEach(function (c) { ids = ids.concat(collectNovelIds(c)); });
+        }
+        return ids;
+    }
+
+    async function deleteNodeWithSupabase(node) {
+        var ids = collectNovelIds(node);
+        if (ids.length > 0 && window.sb) {
+            for (var i = 0; i < ids.length; i++) {
+                await sb.from('novels').delete().eq('id', ids[i]);
+            }
+        }
+    }
+
+    function stripHtml(html) {
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html || '';
+        return tmp.textContent || tmp.innerText || '';
+    }
+
+    // ── 소설 내보내기 (텍스트 형식) ──
+    async function exportNovelsAsText(novelIds) {
+        if (!novelIds.length || !window.sb) { alert('내보낼 소설이 없습니다.'); return; }
+        var result = await sb.from('novels').select('*').in('id', novelIds);
+        if (result.error || !result.data || !result.data.length) { alert('소설을 불러올 수 없습니다.'); return; }
+        var data = result.data;
+
+        // 제목별 그룹화 (순서 유지)
+        var groups = {};
+        var order = [];
+        data.forEach(function (n) {
+            if (!groups[n.title]) { groups[n.title] = []; order.push(n.title); }
+            groups[n.title].push(n);
+        });
+
+        var output = '';
+        order.forEach(function (title, ti) {
+            if (ti > 0) output += '\n==============\n';
+            var novels = groups[title];
+            novels.forEach(function (n, ni) {
+                if (ni > 0) output += '\n----------------------------\n';
+                if (ni === 0) output += '제목 : ' + (n.title || '') + '\n';
+                output += '부제목 : ' + (n.subtitle || '') + '\n\n';
+                output += stripHtml(n.content);
+            });
+        });
+
+        var blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = 'novels-export.txt'; a.click();
+    }
+
+    // ── 소설 불러오기 (텍스트 형식) ──
+    async function importNovelsFromText(text) {
+        if (!window.sb) return;
+        var sess = await sb.auth.getSession();
+        var session = sess.data.session;
+        if (!session) { alert('로그인이 필요합니다.'); return; }
+
+        var titleGroups = text.split('\n==============\n');
+        for (var g = 0; g < titleGroups.length; g++) {
+            var groupText = titleGroups[g].trim();
+            if (!groupText) continue;
+            var entries = groupText.split('\n----------------------------\n');
+            var groupTitle = '';
+
+            for (var e = 0; e < entries.length; e++) {
+                var entry = entries[e].trim();
+                if (!entry) continue;
+                var lines = entry.split('\n');
+                var title = '', subtitle = '', contentStartIdx = 0;
+
+                for (var l = 0; l < lines.length; l++) {
+                    var line = lines[l];
+                    if (line.indexOf('제목 : ') === 0) {
+                        title = line.substring('제목 : '.length).trim();
+                        groupTitle = title;
+                    } else if (line.indexOf('부제목 : ') === 0) {
+                        subtitle = line.substring('부제목 : '.length).trim();
+                    } else if (line.trim() === '') {
+                        contentStartIdx = l + 1; break;
+                    } else {
+                        contentStartIdx = l; break;
+                    }
+                }
+                if (!title) title = groupTitle;
+                var content = lines.slice(contentStartIdx).join('\n').trim();
+                if (!title && !content) continue;
+
+                var novel = {
+                    user_id: session.user.id,
+                    title: title || '제목 없음',
+                    content: content ? '<p>' + content.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>') + '</p>' : '',
+                    status: 'draft',
+                    created_at: new Date().toISOString()
+                };
+                var res = await sb.from('novels').insert([novel]).select();
+                if (!res.error && res.data && res.data[0]) {
+                    var node = { id: 'novel_' + res.data[0].id, type: 'memo', name: title || '제목 없음' };
+                    var allCat = findNodeById(tree, '_all');
+                    if (allCat) { allCat.children.push(node); } else tree.push(node);
+                }
+            }
+        }
+        renderTree();
+        alert('불러오기 완료');
+    }
+
+    // ── 소설 선택 모달 (수정용) ──
+    function showNovelPicker(callback) {
+        var novels = [];
+        function collectNovels(nodes) {
+            nodes.forEach(function (n) {
+                if (n.id && n.id.indexOf('novel_') === 0) novels.push({ id: n.id.replace('novel_', ''), name: n.name });
+                if (n.children) collectNovels(n.children);
+            });
+        }
+        collectNovels(tree);
+        if (novels.length === 0) { alert('편집할 소설이 없습니다.'); return; }
+
+        var overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        var listHtml = '';
+        novels.forEach(function (n) {
+            listHtml += '<button class="modal-novel-item" data-id="' + n.id + '">' + escapeHtml(n.name) + '</button>';
+        });
+        overlay.innerHTML =
+            '<div class="modal-dialog">' +
+                '<div class="modal-title">편집할 소설 선택</div>' +
+                '<div class="modal-novel-list">' + listHtml + '</div>' +
+                '<div class="modal-actions"><button class="modal-btn modal-btn-cancel">취소</button></div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+        function close() { overlay.remove(); }
+        overlay.querySelector('.modal-btn-cancel').addEventListener('click', close);
+        overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+        overlay.querySelector('.modal-novel-list').addEventListener('click', function (e) {
+            var btn = e.target.closest('.modal-novel-item');
+            if (btn) { close(); callback(btn.dataset.id); }
+        });
     }
 
     // 이름 입력 프롬프트 (모달)

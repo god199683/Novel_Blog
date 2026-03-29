@@ -53,6 +53,7 @@
         <nav class="page-nav" id="page-nav">
             <a href="write.html" class="page-nav-item active">작성</a>
             <a href="viewer.html" class="page-nav-item">뷰어</a>
+            <a href="manage.html" class="page-nav-item">관리</a>
         </nav>
         <section class="write-section">
             <div class="write-header">
@@ -190,6 +191,25 @@
         setTimeout(refreshLocationOptions, 500);
         document.getElementById('save-location').addEventListener('focus', refreshLocationOptions);
 
+        // ── 수정 모드 지원 ──
+        let editingNovelId = null;
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('edit')) {
+            editingNovelId = urlParams.get('edit');
+            (async () => {
+                const { data, error } = await sb.from('novels').select('*').eq('id', editingNovelId).single();
+                if (!error && data) {
+                    document.getElementById('novel-title').value = data.title || '';
+                    document.getElementById('novel-subtitle').value = data.subtitle || '';
+                    editor.innerHTML = data.content || '';
+                    charCount.textContent = editor.innerText.replace(/\n/g, '').length.toLocaleString();
+                    document.getElementById('save-btn').textContent = '수정 저장';
+                } else {
+                    editingNovelId = null;
+                }
+            })();
+        }
+
         document.getElementById('save-btn').addEventListener('click', async () => {
             const btn = document.getElementById('save-btn');
             btn.disabled = true;
@@ -197,27 +217,46 @@
 
             const { data: { session } } = await sb.auth.getSession();
             const title = document.getElementById('novel-title').value || '제목 없음';
-            const novel = {
-                user_id: session.user.id,
-                title: title,
-                content: editor.innerHTML,
-                status: 'draft',
-                created_at: new Date().toISOString()
-            };
 
-            const { data, error } = await sb.from('novels').insert([novel]).select();
-            if (error) {
-                btn.textContent = '저장 실패';
-            } else {
-                const locationId = document.getElementById('save-location').value || null;
-                const novelId = data && data[0] ? data[0].id : Date.now();
-                if (window.sidebarTree) {
-                    window.sidebarTree.addNovelNode(locationId, novelId, title);
+            if (editingNovelId) {
+                // 수정 모드: UPDATE
+                const { error } = await sb.from('novels').update({
+                    title: title,
+                    content: editor.innerHTML
+                }).eq('id', editingNovelId);
+
+                if (error) {
+                    btn.textContent = '저장 실패';
+                } else {
+                    document.getElementById('save-status').textContent = '수정됨 ' + new Date().toLocaleTimeString();
+                    btn.textContent = '수정 저장';
                 }
-                document.getElementById('save-status').textContent = '저장됨 ' + new Date().toLocaleTimeString();
+            } else {
+                // 새 글 모드: INSERT
+                const novel = {
+                    user_id: session.user.id,
+                    title: title,
+                    content: editor.innerHTML,
+                    status: 'draft',
+                    created_at: new Date().toISOString()
+                };
+
+                const { data, error } = await sb.from('novels').insert([novel]).select();
+                if (error) {
+                    btn.textContent = '저장 실패';
+                } else {
+                    const locationId = document.getElementById('save-location').value || null;
+                    const novelId = data && data[0] ? data[0].id : Date.now();
+                    if (window.sidebarTree) {
+                        window.sidebarTree.addNovelNode(locationId, novelId, title);
+                    }
+                    document.getElementById('save-status').textContent = '저장됨 ' + new Date().toLocaleTimeString();
+                    // 저장 후 수정 모드로 전환
+                    if (data && data[0]) editingNovelId = data[0].id;
+                    btn.textContent = '수정 저장';
+                }
             }
             btn.disabled = false;
-            btn.textContent = '저장';
         });
     </script>
 </body>
