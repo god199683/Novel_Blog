@@ -53,10 +53,10 @@ async function checkAuth() {
             showAwayOverlay();
         });
 
-        // 계정 관리
+        // 계정 관리 페이지로 이동
         document.getElementById('btn-account').addEventListener('click', () => {
             dropdown.classList.remove('show');
-            showAccountModal();
+            window.location.href = 'account.html';
         });
     }
 }
@@ -96,46 +96,3 @@ function showAwayOverlay() {
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
 }
 
-// ── 계정 관리 모달 (PIN 설정) ──
-function showAccountModal() {
-    const currentPin = localStorage.getItem('away-pin') || '';
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
-    overlay.innerHTML =
-        '<div class="modal-dialog">' +
-            '<div class="modal-title">계정 관리</div>' +
-            '<label class="modal-label">자리비움 PIN (6자리 숫자)</label>' +
-            '<input type="password" class="modal-input" id="pin-input" placeholder="6자리 숫자 입력" maxlength="6" value="' + currentPin + '">' +
-            '<div class="modal-actions">' +
-                '<button class="modal-btn modal-btn-cancel" id="pin-cancel">취소</button>' +
-                '<button class="modal-btn modal-btn-confirm" id="pin-save">저장</button>' +
-            '</div>' +
-        '</div>';
-    document.body.appendChild(overlay);
-
-    const pinInput = overlay.querySelector('#pin-input');
-    pinInput.focus();
-    pinInput.addEventListener('input', () => {
-        pinInput.value = pinInput.value.replace(/[^0-9]/g, '');
-    });
-
-    overlay.querySelector('#pin-cancel').addEventListener('click', () => overlay.remove());
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-    overlay.querySelector('#pin-save').addEventListener('click', () => {
-        const val = pinInput.value.trim();
-        if (val && val.length !== 6) {
-            alert('PIN은 6자리 숫자여야 합니다.');
-            return;
-        }
-        if (val) {
-            localStorage.setItem('away-pin', val);
-        } else {
-            localStorage.removeItem('away-pin');
-        }
-        overlay.remove();
-    });
-    pinInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') overlay.querySelector('#pin-save').click();
-        if (e.key === 'Escape') overlay.remove();
-    });
-}

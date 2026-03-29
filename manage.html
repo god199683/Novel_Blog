@@ -127,24 +127,14 @@
                     if (!confirm('이 소설을 삭제하시겠습니까?')) return;
                     const { error } = await sb.from('novels').delete().eq('id', id);
                     if (!error) {
-                        // 사이드바에서도 제거
+                        // 사이드바에서도 제거 + 리렌더
                         if (window.sidebarTree) {
-                            const tree = window.sidebarTree.getTree();
-                            removeFromTree(tree, 'novel_' + id);
-                            window.sidebarTree.getTree(); // trigger save via renderTree
+                            window.sidebarTree.removeNode('novel_' + id);
                         }
                         await loadNovels();
                     }
                 }
             });
-
-            function removeFromTree(nodes, id) {
-                for (let i = 0; i < nodes.length; i++) {
-                    if (nodes[i].id === id) { nodes.splice(i, 1); return true; }
-                    if (nodes[i].children && removeFromTree(nodes[i].children, id)) return true;
-                }
-                return false;
-            }
 
             searchEl.addEventListener('input', () => {
                 const q = searchEl.value.trim().toLowerCase();
