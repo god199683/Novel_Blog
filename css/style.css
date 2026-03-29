@@ -108,7 +108,7 @@ body { background-color: #ffffff; color: #333; line-height: 1.6; }
 .write-page { height: 100vh; overflow: hidden; }
 .write-section { padding: 0; height: calc(100vh - 45px - 38px); background: #fff; display: flex; flex-direction: column; overflow: hidden; }
 .write-header { display: flex; align-items: center; gap: 12px; padding: 10px 20px; border-bottom: 1px solid #e8f2fb; flex-shrink: 0; }
-.write-title-input { flex: 1; border: none; outline: none; font-size: 1.4rem; font-weight: 700; color: #2c3e50; font-family: inherit; }
+.write-title-input { flex: 1; min-width: 0; border: none; outline: none; font-size: 1.4rem; font-weight: 700; color: #2c3e50; font-family: inherit; }
 .write-title-input::placeholder { color: #b0cbde; }
 .write-subtitle-input { flex: 1; border: none; outline: none; font-size: 0.95rem; color: #5a7a9a; font-family: inherit; }
 .write-subtitle-input::placeholder { color: #c5d8e8; }
