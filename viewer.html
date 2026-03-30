@@ -6,8 +6,11 @@
     <title>소설 뷰어 | Novel_Blog</title>
     <link rel="stylesheet" href="css/style.css">
     <style>
+        #viewer-container { flex: 1; overflow-y: auto; min-width: 0; }
         .viewer-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #b0cbde; font-size: 0.95rem; gap: 0.5rem; }
         .viewer-empty svg { width: 48px; height: 48px; stroke: #d0e3f2; margin-bottom: 0.5rem; }
+        .novel-reader-content { word-break: break-word; overflow-wrap: break-word; }
+        .novel-reader-content img { max-width: 100%; height: auto; }
     </style>
 </head>
 <body class="write-page">

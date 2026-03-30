@@ -210,7 +210,7 @@ body { background-color: #ffffff; color: #333; line-height: 1.6; }
 
 /* 사이드바 있는 페이지 레이아웃 */
 .has-sidebar .navbar { z-index: 95; }
-.has-sidebar main { margin-left: 260px; width: calc(100% - 260px); transition: margin-left 0.3s ease, width 0.3s ease; }
+.has-sidebar main { margin-left: 260px; width: calc(100% - 260px); transition: margin-left 0.3s ease, width 0.3s ease; min-width: 0; overflow: hidden; }
 .has-sidebar footer { margin-left: 260px; transition: margin-left 0.3s ease; }
 .has-sidebar.sidebar-closed main { margin-left: 0; width: 100%; }
 .has-sidebar.sidebar-closed footer { margin-left: 0; }
@@ -256,14 +256,14 @@ body { background-color: #ffffff; color: #333; line-height: 1.6; }
 .page-nav-item.active { color: #3a9ad9; border-bottom-color: #3a9ad9; }
 
 /* 뷰어 페이지 */
-.viewer-section { padding: 0; height: calc(100vh - 45px - 38px); background: #fff; display: flex; flex-direction: column; overflow: hidden; }
+.viewer-section { padding: 0; height: calc(100vh - 45px - 38px); background: #fff; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 .novel-list { flex: 1; overflow-y: auto; padding: 1rem; }
 .novel-card { padding: 1rem 1.2rem; border: 1px solid #e8f2fb; border-radius: 10px; margin-bottom: 0.8rem; cursor: pointer; transition: all 0.15s; }
 .novel-card:hover { border-color: #3a9ad9; box-shadow: 0 2px 8px rgba(58,154,217,0.1); }
 .novel-card-title { font-size: 1.1rem; font-weight: 700; color: #2c3e50; margin-bottom: 0.3rem; }
 .novel-card-meta { font-size: 0.78rem; color: #7a9ab5; }
 .novel-card-preview { font-size: 0.85rem; color: #5a7a9a; margin-top: 0.5rem; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.novel-reader { flex: 1; overflow-y: auto; padding: 2rem; max-width: 720px; margin: 0 auto; width: 100%; }
+.novel-reader { flex: 1; overflow-y: auto; padding: 2rem; max-width: 720px; margin: 0 auto; width: 100%; min-width: 0; box-sizing: border-box; }
 .novel-reader-title { font-size: 1.8rem; font-weight: 700; color: #2c3e50; margin-bottom: 0.5rem; }
 .novel-reader-meta { font-size: 0.82rem; color: #7a9ab5; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #e8f2fb; }
 .novel-reader-content { font-size: 1rem; line-height: 2; color: #2c3e50; }
