@@ -294,7 +294,15 @@
                     btn.textContent = '저장 실패';
                 } else {
                     document.getElementById('save-status').textContent = '수정됨 ' + new Date().toLocaleTimeString();
-                    btn.textContent = '수정 저장';
+                    // 초기 상태로 리셋
+                    editingNovelId = null;
+                    document.getElementById('novel-title').value = '';
+                    document.getElementById('novel-subtitle').value = '';
+                    quill.setContents([]);
+                    charCount.textContent = '0';
+                    btn.textContent = '저장';
+                    // URL에서 edit 파라미터 제거
+                    history.replaceState(null, '', window.location.pathname);
                 }
             } else {
                 const novel = {
