@@ -264,11 +264,66 @@
             (async () => {
                 const { data, error } = await sb.from('novels').select('*').eq('id', editingNovelId).single();
                 if (!error && data) {
-                    document.getElementById('novel-title').value = data.title || '';
-                    document.getElementById('novel-subtitle').value = data.subtitle || '';
-                    quill.clipboard.dangerouslyPasteHTML(data.content || '');
+                    let title = data.title || '';
+                    let subtitle = data.subtitle || '';
+                    let content = data.content || '';
+
+                    // 본문 앞부분에 제목/부제목이 포함되어 있으면 분리
+                    if (!subtitle || title === '제목 없음') {
+                        const tmp = document.createElement('div');
+                        tmp.innerHTML = content;
+                        const children = Array.from(tmp.childNodes);
+                        let extracted = 0;
+
+                        if (children.length > 0) {
+                            const first = children[0];
+                            const firstText = (first.textContent || '').trim();
+                            // 첫 번째 요소가 제목일 가능성 (h1, h2, 또는 "제목 : " 접두사)
+                            if (first.tagName === 'H1' || first.tagName === 'H2' || firstText.indexOf('제목 : ') === 0) {
+                                if (!title || title === '제목 없음') {
+                                    title = firstText.indexOf('제목 : ') === 0 ? firstText.substring('제목 : '.length).trim() : firstText;
+                                }
+                                first.remove();
+                                extracted++;
+                            }
+                        }
+
+                        const remaining = Array.from(tmp.childNodes);
+                        if (remaining.length > 0 && !subtitle) {
+                            const second = remaining[0];
+                            const secondText = (second.textContent || '').trim();
+                            if (second.tagName === 'H3' || second.tagName === 'H4' || secondText.indexOf('부제목 : ') === 0) {
+                                subtitle = secondText.indexOf('부제목 : ') === 0 ? secondText.substring('부제목 : '.length).trim() : secondText;
+                                second.remove();
+                                extracted++;
+                            }
+                        }
+
+                        // 빈 줄 제거
+                        if (extracted > 0) {
+                            const first = tmp.firstChild;
+                            if (first && first.tagName === 'P' && !(first.textContent || '').trim() && !first.querySelector('img')) {
+                                first.remove();
+                            }
+                            content = tmp.innerHTML;
+                        }
+                    }
+
+                    document.getElementById('novel-title').value = title;
+                    document.getElementById('novel-subtitle').value = subtitle;
+                    quill.clipboard.dangerouslyPasteHTML(content);
                     charCount.textContent = quill.getText().replace(/\n/g, '').length.toLocaleString();
                     document.getElementById('save-btn').textContent = '수정 저장';
+
+                    // 본문에서 제목/부제목을 추출했으면 DB와 사이드바에도 반영
+                    if (title !== (data.title || '') || subtitle !== (data.subtitle || '') || content !== (data.content || '')) {
+                        const updateData = { title: title, content: content };
+                        if (subtitle) updateData.subtitle = subtitle;
+                        await sb.from('novels').update(updateData).eq('id', editingNovelId);
+                        if (window.sidebarTree) {
+                            window.sidebarTree.updateNovelTitle(editingNovelId, title);
+                        }
+                    }
                 } else {
                     editingNovelId = null;
                 }
