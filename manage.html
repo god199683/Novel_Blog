@@ -148,6 +148,8 @@
 
             // 페이지 포커스 시 목록 갱신 (불러오기 등 반영)
             window.addEventListener('focus', loadNovels);
+            // 사이드바 삭제 시 목록 갱신
+            window.addEventListener('novels-changed', loadNovels);
         })();
     </script>
 </body>

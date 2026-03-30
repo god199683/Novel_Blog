@@ -9,8 +9,9 @@ async function checkAuth() {
         const nickname = user.user_metadata?.nickname || user.user_metadata?.user_id || '사용자';
         const avatarUrl = user.user_metadata?.avatar_url || '';
 
-        const avatarHtml = avatarUrl
-            ? '<img src="' + avatarUrl + '" alt="프로필" class="nav-avatar">'
+        const avatarSrc = avatarUrl ? (avatarUrl.includes('?') ? avatarUrl : avatarUrl + '?t=' + Date.now()) : '';
+        const avatarHtml = avatarSrc
+            ? '<img src="' + avatarSrc + '" alt="프로필" class="nav-avatar">'
             : '<svg class="nav-avatar-default" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#7a9ab5" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
 
         navLinks.innerHTML =
@@ -66,6 +67,7 @@ checkAuth();
 // ── 자리비움 오버레이 ──
 function showAwayOverlay() {
     const storedPin = localStorage.getItem('away-pin') || '';
+    document.body.classList.add('away-active');
     const overlay = document.createElement('div');
     overlay.className = 'away-overlay';
     overlay.innerHTML =
@@ -81,10 +83,10 @@ function showAwayOverlay() {
 
     function tryUnlock() {
         if (!storedPin) {
-            overlay.remove(); return;
+            overlay.remove(); document.body.classList.remove('away-active'); return;
         }
         if (input.value === storedPin) {
-            overlay.remove();
+            overlay.remove(); document.body.classList.remove('away-active');
         } else {
             input.value = '';
             input.style.borderColor = '#dc2626';

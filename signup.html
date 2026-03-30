@@ -158,21 +158,16 @@
                 return;
             }
 
-            // 프로필 사진 업로드
+            // 프로필 사진 업로드 (Supabase Storage)
             const profileFile = profileInput.files[0];
             if (profileFile && data.user) {
                 const fileExt = profileFile.name.split('.').pop();
                 const filePath = data.user.id + '/avatar.' + fileExt;
-
                 const { error: uploadError } = await sb.storage
                     .from('avatars')
                     .upload(filePath, profileFile, { upsert: true });
-
                 if (!uploadError) {
-                    const { data: urlData } = sb.storage
-                        .from('avatars')
-                        .getPublicUrl(filePath);
-
+                    const { data: urlData } = sb.storage.from('avatars').getPublicUrl(filePath);
                     await sb.auth.updateUser({
                         data: { avatar_url: urlData.publicUrl }
                     });
@@ -182,6 +177,7 @@
             showSuccess('회원가입 성공! 로그인 페이지로 이동합니다.');
             setTimeout(() => { window.location.href = 'login.html'; }, 1500);
         });
+
     </script>
 </body>
 </html>

@@ -24,6 +24,12 @@
         .account-msg-success { background: #f0fdf4; color: #16a34a; }
         .account-msg-error { background: #fef2f2; color: #dc2626; }
         .account-actions { display: flex; gap: 8px; margin-top: 1rem; }
+        .account-avatar-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 1rem; }
+        .account-avatar-preview { width: 80px; height: 80px; border-radius: 50%; background: #eef5fc; border: 2px dashed #b0cbde; display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer; transition: border-color 0.2s; }
+        .account-avatar-preview:hover { border-color: #3a9ad9; }
+        .account-avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
+        .account-avatar-label { color: #3a9ad9; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+        .account-avatar-label:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -43,6 +49,13 @@
 
             <div class="account-card">
                 <h3>프로필 정보</h3>
+                <div class="account-avatar-wrap">
+                    <div class="account-avatar-preview" id="acc-avatar-preview">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#b0cbde" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </div>
+                    <label for="acc-avatar-input" class="account-avatar-label">프로필 사진 변경</label>
+                    <input type="file" id="acc-avatar-input" accept="image/*" hidden>
+                </div>
                 <div class="account-row">
                     <span class="account-label">아이디</span>
                     <span class="account-value" id="acc-userid">-</span>
@@ -110,6 +123,23 @@
             document.getElementById('acc-email').textContent = user.email || '-';
             document.getElementById('acc-nickname').value = user.user_metadata?.nickname || '';
 
+            // 프로필 사진 표시
+            const avatarPreview = document.getElementById('acc-avatar-preview');
+            const avatarInput = document.getElementById('acc-avatar-input');
+            const currentAvatarUrl = user.user_metadata?.avatar_url;
+            if (currentAvatarUrl) {
+                avatarPreview.innerHTML = '<img src="' + currentAvatarUrl + '" alt="프로필">';
+            }
+            avatarPreview.addEventListener('click', () => avatarInput.click());
+            avatarInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => { avatarPreview.innerHTML = '<img src="' + ev.target.result + '" alt="프로필">'; };
+                    reader.readAsDataURL(file);
+                }
+            });
+
             // PIN 로드
             document.getElementById('acc-pin').value = localStorage.getItem('away-pin') || '';
 
@@ -125,12 +155,29 @@
                 setTimeout(() => { el.textContent = ''; el.className = 'account-msg'; }, 3000);
             }
 
-            // 프로필 저장
+            // 프로필 저장 (닉네임 + 사진)
             document.getElementById('btn-save-profile').addEventListener('click', async () => {
                 const nickname = document.getElementById('acc-nickname').value.trim();
                 if (!nickname) { showMsg('profile-msg', '닉네임을 입력하세요.', 'error'); return; }
+
+                let avatarUrl = user.user_metadata?.avatar_url || '';
+                const avatarFile = avatarInput.files[0];
+                if (avatarFile) {
+                    const fileExt = avatarFile.name.split('.').pop();
+                    const filePath = user.id + '/avatar.' + fileExt;
+                    const { error: uploadError } = await sb.storage
+                        .from('avatars')
+                        .upload(filePath, avatarFile, { upsert: true });
+                    if (uploadError) {
+                        showMsg('profile-msg', '사진 업로드 실패: ' + uploadError.message, 'error');
+                        return;
+                    }
+                    const { data: urlData } = sb.storage.from('avatars').getPublicUrl(filePath);
+                    avatarUrl = urlData.publicUrl + '?t=' + Date.now();
+                }
+
                 const { error } = await sb.auth.updateUser({
-                    data: { nickname: nickname }
+                    data: { nickname: nickname, avatar_url: avatarUrl }
                 });
                 showMsg('profile-msg', error ? '저장 실패: ' + error.message : '저장되었습니다.', error ? 'error' : 'success');
             });

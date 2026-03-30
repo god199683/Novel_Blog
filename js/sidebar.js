@@ -118,12 +118,13 @@ function initSidebar() {
     toolboxPanel.querySelector('#tool-delete-all').addEventListener('click', async function () {
         if (!confirm('기본 카테고리를 제외한 모든 항목을 삭제하시겠습니까?')) return;
         var novelIds = [];
-        tree.forEach(function (n) { if (!n.fixed) novelIds = novelIds.concat(collectNovelIds(n)); });
+        tree.forEach(function (n) { novelIds = novelIds.concat(collectNovelIds(n)); });
         deleteNonFixed(tree);
         selectedIds = {};
         renderTree();
         if (novelIds.length > 0 && window.sb) {
             for (var i = 0; i < novelIds.length; i++) { await sb.from('novels').delete().eq('id', novelIds[i]); }
+            window.dispatchEvent(new CustomEvent('novels-changed'));
         }
     });
 
@@ -142,6 +143,7 @@ function initSidebar() {
         renderTree();
         if (novelIds.length > 0 && window.sb) {
             for (var i = 0; i < novelIds.length; i++) { await sb.from('novels').delete().eq('id', novelIds[i]); }
+            window.dispatchEvent(new CustomEvent('novels-changed'));
         }
     });
 
@@ -399,12 +401,13 @@ function initSidebar() {
 
             var delBtn = row.querySelector('.tree-btn-del');
             if (delBtn) {
-                delBtn.addEventListener('click', function (e) {
+                delBtn.addEventListener('click', async function (e) {
                     e.stopPropagation();
                     if (confirm('"' + node.name + '" 삭제?')) {
                         // 소설 노드면 Supabase에서도 삭제
-                        deleteNodeWithSupabase(node);
+                        await deleteNodeWithSupabase(node);
                         removeNode(tree, node.id); delete selectedIds[node.id]; renderTree();
+                        window.dispatchEvent(new CustomEvent('novels-changed'));
                     }
                 });
             }
@@ -580,7 +583,7 @@ function initSidebar() {
                 '<div class="modal-novel-list">' +
                     '<button class="modal-novel-item" data-format="txt">TXT (텍스트)</button>' +
                     '<button class="modal-novel-item" data-format="pdf">PDF</button>' +
-                    '<button class="modal-novel-item" data-format="word">Word (HTML)</button>' +
+                    '<button class="modal-novel-item" data-format="word">Word (.docx)</button>' +
                 '</div>' +
                 '<div class="modal-actions"><button class="modal-btn modal-btn-cancel">취소</button></div>' +
             '</div>';
@@ -596,6 +599,105 @@ function initSidebar() {
         });
     }
 
+    // ── docx 라이브러리 동적 로드 ──
+    function loadDocxLib() {
+        return new Promise(function (resolve, reject) {
+            if (window.docx) { resolve(); return; }
+            var s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/docx@8/build/index.umd.js';
+            s.onload = resolve;
+            s.onerror = function () { reject(new Error('docx 라이브러리 로드 실패')); };
+            document.head.appendChild(s);
+        });
+    }
+
+    function rgbToHex(rgb) {
+        if (!rgb) return undefined;
+        if (rgb.charAt(0) === '#') return rgb.replace('#', '');
+        var match = rgb.match(/\d+/g);
+        if (!match || match.length < 3) return undefined;
+        return ((1 << 24) + (parseInt(match[0]) << 16) + (parseInt(match[1]) << 8) + parseInt(match[2])).toString(16).slice(1);
+    }
+
+    function htmlToDocxParagraphs(container) {
+        var paragraphs = [];
+
+        function extractRuns(node, inherited) {
+            var runs = [];
+            inherited = inherited || {};
+            for (var i = 0; i < node.childNodes.length; i++) {
+                var child = node.childNodes[i];
+                if (child.nodeType === 3) {
+                    var text = child.textContent;
+                    if (text) {
+                        var opts = { text: text, font: 'Malgun Gothic', size: 22 };
+                        if (inherited.bold) opts.bold = true;
+                        if (inherited.italic) opts.italics = true;
+                        if (inherited.underline) opts.underline = { type: docx.UnderlineType.SINGLE };
+                        if (inherited.color) opts.color = inherited.color;
+                        runs.push(new docx.TextRun(opts));
+                    }
+                } else if (child.nodeType === 1) {
+                    var tag = child.tagName.toLowerCase();
+                    var styles = Object.assign({}, inherited);
+                    if (tag === 'b' || tag === 'strong') styles.bold = true;
+                    if (tag === 'i' || tag === 'em') styles.italic = true;
+                    if (tag === 'u') styles.underline = true;
+                    if (child.style && child.style.color) styles.color = rgbToHex(child.style.color);
+                    if (tag === 'font' && child.getAttribute('color')) styles.color = child.getAttribute('color').replace('#', '');
+                    if (tag === 'br') {
+                        runs.push(new docx.TextRun({ break: 1 }));
+                    } else {
+                        runs = runs.concat(extractRuns(child, styles));
+                    }
+                }
+            }
+            return runs;
+        }
+
+        function getAlignment(el) {
+            var align = el.style && el.style.textAlign;
+            if (align === 'center') return docx.AlignmentType.CENTER;
+            if (align === 'right') return docx.AlignmentType.RIGHT;
+            if (align === 'justify') return docx.AlignmentType.JUSTIFIED;
+            return undefined;
+        }
+
+        var els = container.children;
+        if (els.length === 0 && container.textContent) {
+            container.textContent.split('\n').forEach(function (line) {
+                paragraphs.push(new docx.Paragraph({
+                    children: [new docx.TextRun({ text: line, font: 'Malgun Gothic', size: 22 })],
+                    spacing: { line: 360 }
+                }));
+            });
+            return paragraphs;
+        }
+
+        for (var i = 0; i < els.length; i++) {
+            var el = els[i];
+            var tag = el.tagName.toLowerCase();
+            if (tag === 'hr') {
+                paragraphs.push(new docx.Paragraph({
+                    border: { bottom: { style: docx.BorderStyle.SINGLE, size: 1, color: 'CCCCCC' } },
+                    spacing: { before: 200, after: 200 }
+                }));
+                continue;
+            }
+            var runs = extractRuns(el, {});
+            if (runs.length === 0) runs.push(new docx.TextRun({ text: el.textContent || '', font: 'Malgun Gothic', size: 22 }));
+            var paraOpts = { children: runs, spacing: { line: 360 } };
+            var alignment = getAlignment(el);
+            if (alignment) paraOpts.alignment = alignment;
+            if (tag === 'h1') paraOpts.heading = docx.HeadingLevel.HEADING_1;
+            if (tag === 'h2') paraOpts.heading = docx.HeadingLevel.HEADING_2;
+            if (tag === 'h3') paraOpts.heading = docx.HeadingLevel.HEADING_3;
+            if (tag === 'blockquote') paraOpts.indent = { left: 720 };
+            paragraphs.push(new docx.Paragraph(paraOpts));
+        }
+        return paragraphs;
+    }
+
     // ── 소설 내보내기 (TXT / PDF / Word) ──
     async function exportNovels(novelIds, format) {
         if (!novelIds.length || !window.sb) { alert('내보낼 소설이 없습니다.'); return; }
@@ -607,7 +709,9 @@ function initSidebar() {
             var output = '';
             data.forEach(function (n, i) {
                 if (i > 0) output += '\n==============\n';
-                output += '제목 : ' + (n.title || '') + '\n\n';
+                output += '제목 : ' + (n.title || '') + '\n';
+                if (n.subtitle) output += '부제목 : ' + n.subtitle + '\n';
+                output += '\n';
                 output += stripHtml(n.content);
             });
             var blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
@@ -630,19 +734,33 @@ function initSidebar() {
             w.document.write(html);
             w.document.close();
         } else if (format === 'word') {
-            // Word: HTML 파일을 .doc 확장자로 저장 (MS Word 호환)
-            var wordHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
-                '<head><meta charset="UTF-8"><style>body{font-family:"Malgun Gothic","맑은 고딕",sans-serif;line-height:1.8;color:#2c3e50;}' +
-                'h1{font-size:18pt;border-bottom:2px solid #3a9ad9;padding-bottom:6px;margin-bottom:12px;}' +
-                '.novel{margin-bottom:30px;page-break-after:always;}.novel:last-child{page-break-after:auto;}</style></head><body>';
-            data.forEach(function (n) {
-                wordHtml += '<div class="novel"><h1>' + escapeHtml(n.title || '제목 없음') + '</h1>';
-                wordHtml += '<div>' + (n.content || '') + '</div></div>';
+            // Word: docx 라이브러리로 실제 .docx 생성
+            try {
+                await loadDocxLib();
+            } catch (e) { alert('Word 내보내기 라이브러리를 불러올 수 없습니다.'); return; }
+
+            var children = [];
+            data.forEach(function (n, idx) {
+                if (idx > 0) {
+                    children.push(new docx.Paragraph({ children: [new docx.TextRun('')], pageBreakBefore: true }));
+                }
+                children.push(new docx.Paragraph({
+                    children: [new docx.TextRun({ text: n.title || '제목 없음', bold: true, size: 36, font: 'Malgun Gothic' })],
+                    spacing: { after: 300 },
+                    border: { bottom: { style: docx.BorderStyle.SINGLE, size: 2, color: '3A9AD9' } }
+                }));
+                var tmp = document.createElement('div');
+                tmp.innerHTML = n.content || '';
+                var paras = htmlToDocxParagraphs(tmp);
+                paras.forEach(function (p) { children.push(p); });
             });
-            wordHtml += '</body></html>';
-            var blob = new Blob(['\ufeff' + wordHtml], { type: 'application/msword' });
+
+            var doc = new docx.Document({
+                sections: [{ properties: {}, children: children }]
+            });
+            var blob = await docx.Packer.toBlob(doc);
             var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-            a.download = 'novels-export.doc'; a.click();
+            a.download = 'novels-export.docx'; a.click();
         }
     }
 
@@ -660,21 +778,40 @@ function initSidebar() {
             reader.onload = async function (ev) {
                 var text = ev.target.result;
                 var sections = text.split('\n==============\n');
+                var lastNovelId = null;
+                var validCount = 0;
                 for (var s = 0; s < sections.length; s++) {
                     var sec = sections[s].trim();
                     if (!sec) continue;
-                    var title = '제목 없음', content = sec;
-                    if (sec.indexOf('제목 : ') === 0) {
-                        var lines = sec.split('\n');
+                    var title = '', subtitle = '', content = sec;
+                    var lines = sec.split('\n');
+                    var cStart = 0;
+                    if (lines[0] && lines[0].indexOf('제목 : ') === 0) {
                         title = lines[0].substring('제목 : '.length).trim();
-                        var cStart = 1;
-                        if (lines[1] && lines[1].trim() === '') cStart = 2;
-                        content = lines.slice(cStart).join('\n').trim();
+                        cStart = 1;
+                    } else if (lines[0]) {
+                        // 첫 줄을 제목으로 사용
+                        title = lines[0].trim();
+                        cStart = 1;
                     }
-                    await saveImportedNovel(session, title, '<p>' + content.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>') + '</p>');
+                    if (lines[cStart] && lines[cStart].indexOf('부제목 : ') === 0) {
+                        subtitle = lines[cStart].substring('부제목 : '.length).trim();
+                        cStart++;
+                    } else if (lines[cStart] && cStart === 1 && lines[cStart].trim() && lines[cStart].trim().length < 50) {
+                        // 두 번째 줄이 짧으면 부제목으로 간주
+                        subtitle = lines[cStart].trim();
+                        cStart++;
+                    }
+                    if (lines[cStart] && lines[cStart].trim() === '') cStart++;
+                    content = lines.slice(cStart).join('\n').trim();
+                    if (!title) title = '제목 없음';
+                    lastNovelId = await saveImportedNovel(session, title, '<p>' + content.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>') + '</p>', subtitle);
+                    validCount++;
                 }
+                saveTree(tree);
                 renderTree();
-                alert('불러오기 완료 (' + sections.length + '편)');
+                window.dispatchEvent(new CustomEvent('novels-changed'));
+                alert('불러오기 완료 (' + validCount + '편)');
             };
             reader.readAsText(file);
         } else if (ext === 'doc' || ext === 'docx' || ext === 'html' || ext === 'htm') {
@@ -684,22 +821,28 @@ function initSidebar() {
                 var parser = new DOMParser();
                 var doc = parser.parseFromString(htmlContent, 'text/html');
                 var novels = doc.querySelectorAll('.novel');
+                var lastNovelId = null;
+                var importCount = 0;
                 if (novels.length > 0) {
                     for (var i = 0; i < novels.length; i++) {
                         var h1 = novels[i].querySelector('h1');
                         var title = h1 ? h1.textContent.trim() : '제목 없음';
+                        if (h1) h1.remove();
                         var div = novels[i].querySelector('div');
                         var content = div ? div.innerHTML : novels[i].innerHTML;
-                        await saveImportedNovel(session, title, content);
+                        lastNovelId = await saveImportedNovel(session, title, content);
+                        importCount++;
                     }
                 } else {
-                    // 구조화되지 않은 HTML/Word → 전체를 하나의 소설로
                     var title = doc.title || file.name.replace(/\.[^.]+$/, '') || '제목 없음';
                     var body = doc.body ? doc.body.innerHTML : htmlContent;
-                    await saveImportedNovel(session, title, body);
+                    lastNovelId = await saveImportedNovel(session, title, body);
+                    importCount = 1;
                 }
+                saveTree(tree);
                 renderTree();
-                alert('불러오기 완료');
+                window.dispatchEvent(new CustomEvent('novels-changed'));
+                alert('불러오기 완료 (' + importCount + '편)');
             };
             reader.readAsText(file);
         } else if (ext === 'pdf') {
@@ -711,7 +854,7 @@ function initSidebar() {
         }
     }
 
-    async function saveImportedNovel(session, title, content) {
+    async function saveImportedNovel(session, title, content, subtitle) {
         var novel = {
             user_id: session.user.id,
             title: title || '제목 없음',
@@ -719,12 +862,27 @@ function initSidebar() {
             status: 'draft',
             created_at: new Date().toISOString()
         };
+        if (subtitle) novel.subtitle = subtitle;
         var res = await sb.from('novels').insert([novel]).select();
-        if (!res.error && res.data && res.data[0]) {
-            var node = { id: 'novel_' + res.data[0].id, type: 'memo', name: title || '제목 없음' };
+        if (res.error) {
+            // subtitle 컬럼이 없을 경우 subtitle 제외 후 재시도
+            if (subtitle && res.error.message && res.error.message.indexOf('subtitle') !== -1) {
+                delete novel.subtitle;
+                res = await sb.from('novels').insert([novel]).select();
+            }
+            if (res.error) {
+                console.error('불러오기 저장 실패:', res.error);
+                return null;
+            }
+        }
+        if (res.data && res.data[0]) {
+            var novelId = res.data[0].id;
+            var node = { id: 'novel_' + novelId, type: 'memo', name: title || '제목 없음' };
             var allCat = findNodeById(tree, '_all');
             if (allCat) { allCat.children.push(node); } else tree.push(node);
+            return novelId;
         }
+        return null;
     }
 
     // ── 소설 선택 모달 (수정용) ──
@@ -864,6 +1022,14 @@ function initSidebar() {
             removeNode(tree, nodeId);
             delete selectedIds[nodeId];
             renderTree();
+        },
+        updateNovelTitle: function (novelId, newTitle) {
+            var node = findNodeById(tree, 'novel_' + novelId);
+            if (node) {
+                node.name = newTitle;
+                saveTree(tree);
+                renderTree();
+            }
         }
     };
 
