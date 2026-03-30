@@ -158,30 +158,43 @@
                 return;
             }
 
-            // 프로필 사진 업로드
+            // 프로필 사진 업로드 (base64로 user_metadata에 저장)
             const profileFile = profileInput.files[0];
             if (profileFile && data.user) {
-                const fileExt = profileFile.name.split('.').pop();
-                const filePath = data.user.id + '/avatar.' + fileExt;
-
-                const { error: uploadError } = await sb.storage
-                    .from('avatars')
-                    .upload(filePath, profileFile, { upsert: true });
-
-                if (!uploadError) {
-                    const { data: urlData } = sb.storage
-                        .from('avatars')
-                        .getPublicUrl(filePath);
-
+                try {
+                    const avatarBase64 = await resizeImageToBase64(profileFile, 200);
                     await sb.auth.updateUser({
-                        data: { avatar_url: urlData.publicUrl }
+                        data: { avatar_url: avatarBase64 }
                     });
-                }
+                } catch (e) { /* 사진 실패 시 무시 */ }
             }
 
             showSuccess('회원가입 성공! 로그인 페이지로 이동합니다.');
             setTimeout(() => { window.location.href = 'login.html'; }, 1500);
         });
+
+        function resizeImageToBase64(file, maxSize) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let w = img.width, h = img.height;
+                        if (w > h) { if (w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize; } }
+                        else { if (h > maxSize) { w = Math.round(w * maxSize / h); h = maxSize; } }
+                        canvas.width = w;
+                        canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        resolve(canvas.toDataURL('image/jpeg', 0.8));
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
     </script>
 </body>
 </html>

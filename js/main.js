@@ -9,7 +9,7 @@ async function checkAuth() {
         const nickname = user.user_metadata?.nickname || user.user_metadata?.user_id || '사용자';
         const avatarUrl = user.user_metadata?.avatar_url || '';
 
-        const avatarSrc = avatarUrl ? (avatarUrl.includes('?') ? avatarUrl : avatarUrl + '?t=' + Date.now()) : '';
+        const avatarSrc = avatarUrl ? (avatarUrl.startsWith('data:') ? avatarUrl : (avatarUrl.includes('?') ? avatarUrl : avatarUrl + '?t=' + Date.now())) : '';
         const avatarHtml = avatarSrc
             ? '<img src="' + avatarSrc + '" alt="프로필" class="nav-avatar">'
             : '<svg class="nav-avatar-default" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#7a9ab5" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
