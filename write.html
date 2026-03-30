@@ -5,37 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>소설 작성 | Novel_Blog</title>
     <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.snow.css" rel="stylesheet">
     <style>
-        .editor-toolbar { display: flex; flex-wrap: wrap; gap: 2px; padding: 6px 12px; background: #f7fbff; border-bottom: 1px solid #e8f2fb; flex-shrink: 0; }
-        .editor-toolbar button { width: 30px; height: 30px; border: none; background: transparent; cursor: pointer; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #5a7a9a; font-size: 0.85rem; font-weight: 700; font-family: serif; transition: all 0.15s; }
-        .editor-toolbar button:hover { background: #e8f2fb; color: #3a9ad9; }
-        .editor-toolbar button.active { background: #3a9ad9; color: #fff; }
-        .editor-toolbar .toolbar-divider { width: 1px; background: #d0e3f2; margin: 4px 3px; }
-        .editor-content { flex: 1; padding: 20px; outline: none; font-size: 1rem; line-height: 2; color: #2c3e50; overflow-y: auto; }
-        .editor-content:focus { background: #fafcff; }
-        .editor-content p { margin-bottom: 0.5em; }
-        .editor-content blockquote { border-left: 3px solid #3a9ad9; padding-left: 1em; color: #5a7a9a; margin: 0.5em 0; }
         .editor-status { display: flex; justify-content: space-between; padding: 4px 12px; color: #7a9ab5; font-size: 0.78rem; border-top: 1px solid #e8f2fb; flex-shrink: 0; }
-        /* 글씨체 셀렉트 */
-        .toolbar-select-wrap select { border: 1px solid #d0e3f2; border-radius: 4px; padding: 3px 6px; font-size: 0.78rem; color: #5a7a9a; background: #fff; outline: none; cursor: pointer; height: 28px; }
-        .toolbar-select-wrap select:hover { border-color: #3a9ad9; }
-        /* 컬러 피커 */
-        .toolbar-color-wrap { display: flex; align-items: center; }
-        .toolbar-color-label { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; cursor: pointer; border-radius: 6px; font-weight: 700; font-size: 0.85rem; color: #5a7a9a; position: relative; font-family: serif; }
-        .toolbar-color-label:hover { background: #e8f2fb; color: #3a9ad9; }
-        .toolbar-color-label input[type="color"] { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 20px; height: 4px; border: none; padding: 0; cursor: pointer; opacity: 0.8; }
-        .toolbar-highlight-label svg { color: #5a7a9a; }
-        .toolbar-highlight-label:hover svg { color: #3a9ad9; }
-        /* 목록 드롭다운 */
-        .toolbar-list-wrap { position: relative; display: inline-flex; }
-        .toolbar-list-btn { width: 30px; height: 30px; border: none; background: transparent; cursor: pointer; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #5a7a9a; font-size: 1rem; font-weight: 700; transition: all 0.15s; }
-        .toolbar-list-btn:hover { background: #e8f2fb; color: #3a9ad9; }
-        .toolbar-list-dropdown { display: none; position: absolute; top: 100%; left: 0; background: #fff; border: 1px solid #e0eef9; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 100; padding: 4px; min-width: 140px; }
-        .toolbar-list-dropdown.show { display: block; }
-        .toolbar-list-dropdown button { display: block; width: 100%; padding: 6px 10px; border: none; background: transparent; text-align: left; font-size: 0.82rem; color: #2c3e50; cursor: pointer; border-radius: 4px; white-space: nowrap; }
-        .toolbar-list-dropdown button:hover { background: #f0f7fd; color: #3a9ad9; }
-        /* 저장 위치 셀렉트 */
         .save-location-select { border: 1px solid #d0e3f2; border-radius: 6px; padding: 4px 8px; font-size: 0.82rem; color: #5a7a9a; background: #fff; outline: none; cursor: pointer; max-width: 160px; }
+        /* Quill 에디터 커스텀 스타일 */
+        .write-body .ql-toolbar.ql-snow { border: none; border-bottom: 1px solid #e8f2fb; background: #f7fbff; }
+        .write-body .ql-container.ql-snow { border: none; flex: 1; overflow-y: auto; font-size: 1rem; }
+        .write-body .ql-editor { line-height: 2; color: #2c3e50; padding: 20px; min-height: 100%; }
+        .write-body .ql-editor.ql-blank::before { color: #b0cbde; font-style: normal; }
+        .write-body .ql-snow .ql-stroke { stroke: #5a7a9a; }
+        .write-body .ql-snow .ql-fill { fill: #5a7a9a; }
+        .write-body .ql-snow .ql-picker { color: #5a7a9a; }
+        .write-body .ql-snow button:hover .ql-stroke { stroke: #3a9ad9; }
+        .write-body .ql-snow button:hover .ql-fill { fill: #3a9ad9; }
+        .write-body .ql-snow button.ql-active .ql-stroke { stroke: #3a9ad9; }
+        .write-body .ql-snow button.ql-active .ql-fill { fill: #3a9ad9; }
+        .write-body .ql-editor blockquote { border-left: 3px solid #3a9ad9; padding-left: 1em; color: #5a7a9a; }
+        /* Quill 글씨체 매핑 */
+        .ql-font-malgun-gothic { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; }
+        .ql-font-noto-sans-kr { font-family: 'Noto Sans KR', sans-serif; }
+        .ql-font-nanum-gothic { font-family: 'Nanum Gothic', sans-serif; }
+        .ql-font-nanum-myeongjo { font-family: 'Nanum Myeongjo', serif; }
+        .ql-font-georgia { font-family: Georgia, serif; }
+        .ql-font-monospace { font-family: monospace; }
+        /* Quill 글씨체 드롭다운 레이블 */
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="malgun-gothic"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="malgun-gothic"]::before { content: '맑은 고딕'; font-family: 'Malgun Gothic', sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="noto-sans-kr"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="noto-sans-kr"]::before { content: 'Noto Sans'; font-family: 'Noto Sans KR', sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="nanum-gothic"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="nanum-gothic"]::before { content: '나눔고딕'; font-family: 'Nanum Gothic', sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="nanum-myeongjo"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="nanum-myeongjo"]::before { content: '나눔명조'; font-family: 'Nanum Myeongjo', serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="georgia"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="georgia"]::before { content: 'Georgia'; font-family: Georgia, serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="monospace"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="monospace"]::before { content: 'Monospace'; font-family: monospace; }
     </style>
 </head>
 <body class="write-page">
@@ -68,50 +74,7 @@
             </div>
 
             <div class="write-body">
-                <div class="editor-toolbar" id="editor-toolbar">
-                    <button type="button" data-cmd="bold" title="굵게"><b>B</b></button>
-                    <button type="button" data-cmd="italic" title="기울임"><i>I</i></button>
-                    <button type="button" data-cmd="underline" title="밑줄"><u>U</u></button>
-                    <span class="toolbar-divider"></span>
-                    <div class="toolbar-select-wrap">
-                        <select id="font-family-select" title="글씨체">
-                            <option value="">글씨체</option>
-                            <option value="'Malgun Gothic', '맑은 고딕'">맑은 고딕</option>
-                            <option value="'Noto Sans KR', sans-serif">Noto Sans</option>
-                            <option value="'Nanum Gothic', sans-serif">나눔고딕</option>
-                            <option value="'Nanum Myeongjo', serif">나눔명조</option>
-                            <option value="Georgia, serif">Georgia</option>
-                            <option value="monospace">Monospace</option>
-                        </select>
-                    </div>
-                    <span class="toolbar-divider"></span>
-                    <div class="toolbar-color-wrap" title="글씨 색">
-                        <label class="toolbar-color-label">A<input type="color" id="font-color-picker" value="#000000"></label>
-                    </div>
-                    <div class="toolbar-color-wrap" title="텍스트 배경색">
-                        <label class="toolbar-color-label toolbar-highlight-label">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                            <input type="color" id="highlight-color-picker" value="#FFFF00">
-                        </label>
-                    </div>
-                    <span class="toolbar-divider"></span>
-                    <div class="toolbar-list-wrap">
-                        <button type="button" class="toolbar-list-btn" id="list-toggle" title="목록">&#x2022;</button>
-                        <div class="toolbar-list-dropdown" id="list-dropdown">
-                            <button type="button" data-cmd="insertUnorderedList" title="글머리 기호">&#x2022; 글머리 기호</button>
-                            <button type="button" data-cmd="insertOrderedList" title="번호 매기기">1. 번호 매기기</button>
-                        </div>
-                    </div>
-                    <button type="button" data-cmd="insertHorizontalRule" title="구분선">&#x2015;</button>
-                    <span class="toolbar-divider"></span>
-                    <button type="button" data-cmd="justifyLeft" title="왼쪽">&#x2261;</button>
-                    <button type="button" data-cmd="justifyCenter" title="가운데">&#x2263;</button>
-                    <button type="button" data-cmd="justifyRight" title="오른쪽">&#x2262;</button>
-                    <span class="toolbar-divider"></span>
-                    <button type="button" data-cmd="undo" title="취소">&#x21A9;</button>
-                    <button type="button" data-cmd="redo" title="다시">&#x21AA;</button>
-                </div>
-                <div class="editor-content" id="editor-content" contenteditable="true"></div>
+                <div id="editor-container"></div>
                 <div class="editor-status">
                     <span><span id="char-count">0</span>자</span>
                     <span id="save-status"></span>
@@ -121,6 +84,7 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.js"></script>
     <script src="js/supabase.js"></script>
     <script src="js/sidebar.js"></script>
     <script src="js/main.js"></script>
@@ -130,67 +94,42 @@
             if (!session) window.location.href = 'login.html';
         })();
 
-        const editor = document.getElementById('editor-content');
+        // Quill 글씨체 등록
+        const Font = Quill.import('attributors/class/font');
+        Font.whitelist = ['malgun-gothic', 'noto-sans-kr', 'nanum-gothic', 'nanum-myeongjo', 'georgia', 'monospace'];
+        Quill.register(Font, true);
+
+        const Size = Quill.import('attributors/style/size');
+        Size.whitelist = ['10px', '12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px', '36px'];
+        Quill.register(Size, true);
+
+        // Quill 에디터 초기화
+        const quill = new Quill('#editor-container', {
+            theme: 'snow',
+            placeholder: '내용을 입력하세요...',
+            modules: {
+                toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    [{ 'font': ['', 'malgun-gothic', 'noto-sans-kr', 'nanum-gothic', 'nanum-myeongjo', 'georgia', 'monospace'] }],
+                    [{ 'size': ['10px', '12px', '14px', false, '18px', '20px', '24px', '28px', '32px', '36px'] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'script': 'sub' }, { 'script': 'super' }],
+                    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                    [{ 'indent': '-1' }, { 'indent': '+1' }],
+                    [{ 'align': [] }],
+                    ['blockquote'],
+                    ['link', 'image'],
+                    ['clean']
+                ]
+            }
+        });
+
         const charCount = document.getElementById('char-count');
 
-        document.getElementById('editor-toolbar').addEventListener('click', (e) => {
-            const btn = e.target.closest('button[data-cmd]');
-            if (!btn) return;
-            e.preventDefault();
-            document.execCommand(btn.dataset.cmd, false, btn.dataset.value || null);
-            editor.focus();
-        });
-
-        // 글씨체 변경
-        document.getElementById('font-family-select').addEventListener('change', (e) => {
-            if (e.target.value) {
-                document.execCommand('fontName', false, e.target.value);
-                editor.focus();
-            }
-        });
-
-        // 글씨 색 변경 - 선택 영역 보존 후 적용
-        let savedSelection = null;
-        function saveSelection() {
-            const sel = window.getSelection();
-            if (sel.rangeCount > 0) savedSelection = sel.getRangeAt(0).cloneRange();
-        }
-        function restoreSelection() {
-            if (savedSelection) {
-                const sel = window.getSelection();
-                sel.removeAllRanges();
-                sel.addRange(savedSelection);
-            }
-        }
-
-        document.getElementById('font-color-picker').addEventListener('mousedown', () => saveSelection());
-        document.getElementById('font-color-picker').addEventListener('input', (e) => {
-            restoreSelection();
-            document.execCommand('foreColor', false, e.target.value);
-        });
-
-        // 텍스트 배경색 변경
-        document.getElementById('highlight-color-picker').addEventListener('mousedown', () => saveSelection());
-        document.getElementById('highlight-color-picker').addEventListener('input', (e) => {
-            restoreSelection();
-            document.execCommand('hiliteColor', false, e.target.value);
-        });
-
-        // 목록 드롭다운 토글
-        document.getElementById('list-toggle').addEventListener('click', (e) => {
-            e.stopPropagation();
-            document.getElementById('list-dropdown').classList.toggle('show');
-        });
-        document.addEventListener('click', () => {
-            document.getElementById('list-dropdown').classList.remove('show');
-        });
-
-        editor.addEventListener('input', () => {
-            charCount.textContent = editor.innerText.replace(/\n/g, '').length.toLocaleString();
-        });
-
-        editor.addEventListener('keydown', (e) => {
-            if (e.key === 'Tab') { e.preventDefault(); document.execCommand('insertText', false, '    '); }
+        // 글자 수 업데이트
+        quill.on('text-change', () => {
+            charCount.textContent = quill.getText().replace(/\n/g, '').length.toLocaleString();
         });
 
         // 저장 위치 옵션 갱신
@@ -216,8 +155,8 @@
                 if (!error && data) {
                     document.getElementById('novel-title').value = data.title || '';
                     document.getElementById('novel-subtitle').value = data.subtitle || '';
-                    editor.innerHTML = data.content || '';
-                    charCount.textContent = editor.innerText.replace(/\n/g, '').length.toLocaleString();
+                    quill.clipboard.dangerouslyPasteHTML(data.content || '');
+                    charCount.textContent = quill.getText().replace(/\n/g, '').length.toLocaleString();
                     document.getElementById('save-btn').textContent = '수정 저장';
                 } else {
                     editingNovelId = null;
@@ -232,12 +171,13 @@
 
             const { data: { session } } = await sb.auth.getSession();
             const title = document.getElementById('novel-title').value || '제목 없음';
+            const content = quill.root.innerHTML;
 
             if (editingNovelId) {
                 // 수정 모드: UPDATE
                 const { error } = await sb.from('novels').update({
                     title: title,
-                    content: editor.innerHTML
+                    content: content
                 }).eq('id', editingNovelId);
 
                 if (error) {
@@ -251,7 +191,7 @@
                 const novel = {
                     user_id: session.user.id,
                     title: title,
-                    content: editor.innerHTML,
+                    content: content,
                     status: 'draft',
                     created_at: new Date().toISOString()
                 };
@@ -269,7 +209,7 @@
                     // 저장 후 에디터 초기화 (새 글 모드 유지)
                     document.getElementById('novel-title').value = '';
                     document.getElementById('novel-subtitle').value = '';
-                    editor.innerHTML = '';
+                    quill.setContents([]);
                     charCount.textContent = '0';
                     btn.textContent = '저장';
                 }

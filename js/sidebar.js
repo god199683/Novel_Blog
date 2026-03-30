@@ -124,6 +124,7 @@ function initSidebar() {
         renderTree();
         if (novelIds.length > 0 && window.sb) {
             for (var i = 0; i < novelIds.length; i++) { await sb.from('novels').delete().eq('id', novelIds[i]); }
+            window.dispatchEvent(new CustomEvent('novels-changed'));
         }
     });
 
@@ -142,6 +143,7 @@ function initSidebar() {
         renderTree();
         if (novelIds.length > 0 && window.sb) {
             for (var i = 0; i < novelIds.length; i++) { await sb.from('novels').delete().eq('id', novelIds[i]); }
+            window.dispatchEvent(new CustomEvent('novels-changed'));
         }
     });
 
@@ -399,12 +401,13 @@ function initSidebar() {
 
             var delBtn = row.querySelector('.tree-btn-del');
             if (delBtn) {
-                delBtn.addEventListener('click', function (e) {
+                delBtn.addEventListener('click', async function (e) {
                     e.stopPropagation();
                     if (confirm('"' + node.name + '" 삭제?')) {
                         // 소설 노드면 Supabase에서도 삭제
-                        deleteNodeWithSupabase(node);
+                        await deleteNodeWithSupabase(node);
                         removeNode(tree, node.id); delete selectedIds[node.id]; renderTree();
+                        window.dispatchEvent(new CustomEvent('novels-changed'));
                     }
                 });
             }
@@ -580,7 +583,7 @@ function initSidebar() {
                 '<div class="modal-novel-list">' +
                     '<button class="modal-novel-item" data-format="txt">TXT (텍스트)</button>' +
                     '<button class="modal-novel-item" data-format="pdf">PDF</button>' +
-                    '<button class="modal-novel-item" data-format="word">Word (HTML)</button>' +
+                    '<button class="modal-novel-item" data-format="word">Word (.docx)</button>' +
                 '</div>' +
                 '<div class="modal-actions"><button class="modal-btn modal-btn-cancel">취소</button></div>' +
             '</div>';
@@ -594,6 +597,105 @@ function initSidebar() {
             close();
             exportNovels(novelIds, btn.dataset.format);
         });
+    }
+
+    // ── docx 라이브러리 동적 로드 ──
+    function loadDocxLib() {
+        return new Promise(function (resolve, reject) {
+            if (window.docx) { resolve(); return; }
+            var s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/docx@8/build/index.umd.js';
+            s.onload = resolve;
+            s.onerror = function () { reject(new Error('docx 라이브러리 로드 실패')); };
+            document.head.appendChild(s);
+        });
+    }
+
+    function rgbToHex(rgb) {
+        if (!rgb) return undefined;
+        if (rgb.charAt(0) === '#') return rgb.replace('#', '');
+        var match = rgb.match(/\d+/g);
+        if (!match || match.length < 3) return undefined;
+        return ((1 << 24) + (parseInt(match[0]) << 16) + (parseInt(match[1]) << 8) + parseInt(match[2])).toString(16).slice(1);
+    }
+
+    function htmlToDocxParagraphs(container) {
+        var paragraphs = [];
+
+        function extractRuns(node, inherited) {
+            var runs = [];
+            inherited = inherited || {};
+            for (var i = 0; i < node.childNodes.length; i++) {
+                var child = node.childNodes[i];
+                if (child.nodeType === 3) {
+                    var text = child.textContent;
+                    if (text) {
+                        var opts = { text: text, font: 'Malgun Gothic', size: 22 };
+                        if (inherited.bold) opts.bold = true;
+                        if (inherited.italic) opts.italics = true;
+                        if (inherited.underline) opts.underline = { type: docx.UnderlineType.SINGLE };
+                        if (inherited.color) opts.color = inherited.color;
+                        runs.push(new docx.TextRun(opts));
+                    }
+                } else if (child.nodeType === 1) {
+                    var tag = child.tagName.toLowerCase();
+                    var styles = Object.assign({}, inherited);
+                    if (tag === 'b' || tag === 'strong') styles.bold = true;
+                    if (tag === 'i' || tag === 'em') styles.italic = true;
+                    if (tag === 'u') styles.underline = true;
+                    if (child.style && child.style.color) styles.color = rgbToHex(child.style.color);
+                    if (tag === 'font' && child.getAttribute('color')) styles.color = child.getAttribute('color').replace('#', '');
+                    if (tag === 'br') {
+                        runs.push(new docx.TextRun({ break: 1 }));
+                    } else {
+                        runs = runs.concat(extractRuns(child, styles));
+                    }
+                }
+            }
+            return runs;
+        }
+
+        function getAlignment(el) {
+            var align = el.style && el.style.textAlign;
+            if (align === 'center') return docx.AlignmentType.CENTER;
+            if (align === 'right') return docx.AlignmentType.RIGHT;
+            if (align === 'justify') return docx.AlignmentType.JUSTIFIED;
+            return undefined;
+        }
+
+        var els = container.children;
+        if (els.length === 0 && container.textContent) {
+            container.textContent.split('\n').forEach(function (line) {
+                paragraphs.push(new docx.Paragraph({
+                    children: [new docx.TextRun({ text: line, font: 'Malgun Gothic', size: 22 })],
+                    spacing: { line: 360 }
+                }));
+            });
+            return paragraphs;
+        }
+
+        for (var i = 0; i < els.length; i++) {
+            var el = els[i];
+            var tag = el.tagName.toLowerCase();
+            if (tag === 'hr') {
+                paragraphs.push(new docx.Paragraph({
+                    border: { bottom: { style: docx.BorderStyle.SINGLE, size: 1, color: 'CCCCCC' } },
+                    spacing: { before: 200, after: 200 }
+                }));
+                continue;
+            }
+            var runs = extractRuns(el, {});
+            if (runs.length === 0) runs.push(new docx.TextRun({ text: el.textContent || '', font: 'Malgun Gothic', size: 22 }));
+            var paraOpts = { children: runs, spacing: { line: 360 } };
+            var alignment = getAlignment(el);
+            if (alignment) paraOpts.alignment = alignment;
+            if (tag === 'h1') paraOpts.heading = docx.HeadingLevel.HEADING_1;
+            if (tag === 'h2') paraOpts.heading = docx.HeadingLevel.HEADING_2;
+            if (tag === 'h3') paraOpts.heading = docx.HeadingLevel.HEADING_3;
+            if (tag === 'blockquote') paraOpts.indent = { left: 720 };
+            paragraphs.push(new docx.Paragraph(paraOpts));
+        }
+        return paragraphs;
     }
 
     // ── 소설 내보내기 (TXT / PDF / Word) ──
@@ -630,19 +732,33 @@ function initSidebar() {
             w.document.write(html);
             w.document.close();
         } else if (format === 'word') {
-            // Word: HTML 파일을 .doc 확장자로 저장 (MS Word 호환)
-            var wordHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
-                '<head><meta charset="UTF-8"><style>body{font-family:"Malgun Gothic","맑은 고딕",sans-serif;line-height:1.8;color:#2c3e50;}' +
-                'h1{font-size:18pt;border-bottom:2px solid #3a9ad9;padding-bottom:6px;margin-bottom:12px;}' +
-                '.novel{margin-bottom:30px;page-break-after:always;}.novel:last-child{page-break-after:auto;}</style></head><body>';
-            data.forEach(function (n) {
-                wordHtml += '<div class="novel"><h1>' + escapeHtml(n.title || '제목 없음') + '</h1>';
-                wordHtml += '<div>' + (n.content || '') + '</div></div>';
+            // Word: docx 라이브러리로 실제 .docx 생성
+            try {
+                await loadDocxLib();
+            } catch (e) { alert('Word 내보내기 라이브러리를 불러올 수 없습니다.'); return; }
+
+            var children = [];
+            data.forEach(function (n, idx) {
+                if (idx > 0) {
+                    children.push(new docx.Paragraph({ children: [new docx.TextRun('')], pageBreakBefore: true }));
+                }
+                children.push(new docx.Paragraph({
+                    children: [new docx.TextRun({ text: n.title || '제목 없음', bold: true, size: 36, font: 'Malgun Gothic' })],
+                    spacing: { after: 300 },
+                    border: { bottom: { style: docx.BorderStyle.SINGLE, size: 2, color: '3A9AD9' } }
+                }));
+                var tmp = document.createElement('div');
+                tmp.innerHTML = n.content || '';
+                var paras = htmlToDocxParagraphs(tmp);
+                paras.forEach(function (p) { children.push(p); });
             });
-            wordHtml += '</body></html>';
-            var blob = new Blob(['\ufeff' + wordHtml], { type: 'application/msword' });
+
+            var doc = new docx.Document({
+                sections: [{ properties: {}, children: children }]
+            });
+            var blob = await docx.Packer.toBlob(doc);
             var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-            a.download = 'novels-export.doc'; a.click();
+            a.download = 'novels-export.docx'; a.click();
         }
     }
 
