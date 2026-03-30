@@ -294,6 +294,11 @@
                     btn.textContent = '저장 실패';
                 } else {
                     document.getElementById('save-status').textContent = '수정됨 ' + new Date().toLocaleTimeString();
+                    // 사이드바 제목 동기화
+                    if (window.sidebarTree) {
+                        window.sidebarTree.updateNovelTitle(editingNovelId, title);
+                    }
+                    window.dispatchEvent(new CustomEvent('novels-changed'));
                     // 초기 상태로 리셋
                     editingNovelId = null;
                     document.getElementById('novel-title').value = '';

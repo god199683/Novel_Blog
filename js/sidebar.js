@@ -1003,6 +1003,14 @@ function initSidebar() {
             removeNode(tree, nodeId);
             delete selectedIds[nodeId];
             renderTree();
+        },
+        updateNovelTitle: function (novelId, newTitle) {
+            var node = findNodeById(tree, 'novel_' + novelId);
+            if (node) {
+                node.name = newTitle;
+                saveTree(tree);
+                renderTree();
+            }
         }
     };
 
