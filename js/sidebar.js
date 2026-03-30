@@ -709,7 +709,9 @@ function initSidebar() {
             var output = '';
             data.forEach(function (n, i) {
                 if (i > 0) output += '\n==============\n';
-                output += '제목 : ' + (n.title || '') + '\n\n';
+                output += '제목 : ' + (n.title || '') + '\n';
+                if (n.subtitle) output += '부제목 : ' + n.subtitle + '\n';
+                output += '\n';
                 output += stripHtml(n.content);
             });
             var blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
@@ -779,17 +781,24 @@ function initSidebar() {
                 for (var s = 0; s < sections.length; s++) {
                     var sec = sections[s].trim();
                     if (!sec) continue;
-                    var title = '제목 없음', content = sec;
-                    if (sec.indexOf('제목 : ') === 0) {
-                        var lines = sec.split('\n');
+                    var title = '제목 없음', subtitle = '', content = sec;
+                    var lines = sec.split('\n');
+                    var cStart = 0;
+                    if (lines[0] && lines[0].indexOf('제목 : ') === 0) {
                         title = lines[0].substring('제목 : '.length).trim();
-                        var cStart = 1;
-                        if (lines[1] && lines[1].trim() === '') cStart = 2;
-                        content = lines.slice(cStart).join('\n').trim();
+                        cStart = 1;
                     }
-                    await saveImportedNovel(session, title, '<p>' + content.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>') + '</p>');
+                    if (lines[cStart] && lines[cStart].indexOf('부제목 : ') === 0) {
+                        subtitle = lines[cStart].substring('부제목 : '.length).trim();
+                        cStart++;
+                    }
+                    if (lines[cStart] && lines[cStart].trim() === '') cStart++;
+                    content = lines.slice(cStart).join('\n').trim();
+                    await saveImportedNovel(session, title, '<p>' + content.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>') + '</p>', subtitle);
                 }
+                saveTree(tree);
                 renderTree();
+                window.dispatchEvent(new CustomEvent('novels-changed'));
                 alert('불러오기 완료 (' + sections.length + '편)');
             };
             reader.readAsText(file);
@@ -814,7 +823,9 @@ function initSidebar() {
                     var body = doc.body ? doc.body.innerHTML : htmlContent;
                     await saveImportedNovel(session, title, body);
                 }
+                saveTree(tree);
                 renderTree();
+                window.dispatchEvent(new CustomEvent('novels-changed'));
                 alert('불러오기 완료');
             };
             reader.readAsText(file);
@@ -827,7 +838,7 @@ function initSidebar() {
         }
     }
 
-    async function saveImportedNovel(session, title, content) {
+    async function saveImportedNovel(session, title, content, subtitle) {
         var novel = {
             user_id: session.user.id,
             title: title || '제목 없음',
@@ -835,8 +846,20 @@ function initSidebar() {
             status: 'draft',
             created_at: new Date().toISOString()
         };
+        if (subtitle) novel.subtitle = subtitle;
         var res = await sb.from('novels').insert([novel]).select();
-        if (!res.error && res.data && res.data[0]) {
+        if (res.error) {
+            // subtitle 컬럼이 없을 경우 subtitle 제외 후 재시도
+            if (subtitle && res.error.message && res.error.message.indexOf('subtitle') !== -1) {
+                delete novel.subtitle;
+                res = await sb.from('novels').insert([novel]).select();
+            }
+            if (res.error) {
+                console.error('불러오기 저장 실패:', res.error);
+                return;
+            }
+        }
+        if (res.data && res.data[0]) {
             var node = { id: 'novel_' + res.data[0].id, type: 'memo', name: title || '제목 없음' };
             var allCat = findNodeById(tree, '_all');
             if (allCat) { allCat.children.push(node); } else tree.push(node);

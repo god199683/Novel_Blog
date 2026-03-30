@@ -9,6 +9,7 @@
         #viewer-container { flex: 1; overflow-y: auto; min-width: 0; }
         .viewer-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #b0cbde; font-size: 0.95rem; gap: 0.5rem; }
         .viewer-empty svg { width: 48px; height: 48px; stroke: #d0e3f2; margin-bottom: 0.5rem; }
+        .novel-reader-subtitle { font-size: 1.1rem; color: #5a7a9a; margin-bottom: 0.5rem; }
         .novel-reader-content { word-break: break-word; overflow-wrap: break-word; }
         .novel-reader-content img { max-width: 100%; height: auto; }
     </style>
@@ -80,9 +81,12 @@
                 year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
             });
 
+            const subtitleHtml = data.subtitle ? '<div class="novel-reader-subtitle">' + escapeHtml(data.subtitle) + '</div>' : '';
+
             container.innerHTML =
                 '<div class="novel-reader">' +
                     '<div class="novel-reader-title">' + escapeHtml(data.title) + '</div>' +
+                    subtitleHtml +
                     '<div class="novel-reader-meta">' + date + ' · ' + (data.status === 'draft' ? '임시저장' : '발행됨') + '</div>' +
                     '<div class="novel-reader-content">' + (data.content || '') + '</div>' +
                 '</div>';
