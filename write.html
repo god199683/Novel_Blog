@@ -9,27 +9,38 @@
     <style>
         .editor-status { display: flex; justify-content: space-between; padding: 4px 12px; color: #7a9ab5; font-size: 0.78rem; border-top: 1px solid #e8f2fb; flex-shrink: 0; }
         .save-location-select { border: 1px solid #d0e3f2; border-radius: 6px; padding: 4px 8px; font-size: 0.82rem; color: #5a7a9a; background: #fff; outline: none; cursor: pointer; max-width: 160px; }
-        /* Quill 에디터 커스텀 스타일 */
-        .write-body .ql-toolbar.ql-snow { border: none; border-bottom: 1px solid #e8f2fb; background: #f7fbff; }
-        .write-body .ql-container.ql-snow { border: none; flex: 1; overflow-y: auto; font-size: 1rem; }
-        .write-body .ql-editor { line-height: 2; color: #2c3e50; padding: 20px; min-height: 100%; }
+
+        /* Quill 에디터 커스텀 */
+        .write-body .ql-toolbar.ql-snow { border: none; border-bottom: 1px solid #e8f2fb; background: #f7fbff; padding: 8px 12px; }
+        .write-body .ql-container.ql-snow { border: none; flex: 1; overflow-y: auto; font-size: 11pt; }
+        .write-body .ql-editor { line-height: 2; color: #2c3e50; padding: 24px 32px; min-height: 100%; }
         .write-body .ql-editor.ql-blank::before { color: #b0cbde; font-style: normal; }
         .write-body .ql-snow .ql-stroke { stroke: #5a7a9a; }
         .write-body .ql-snow .ql-fill { fill: #5a7a9a; }
         .write-body .ql-snow .ql-picker { color: #5a7a9a; }
-        .write-body .ql-snow button:hover .ql-stroke { stroke: #3a9ad9; }
-        .write-body .ql-snow button:hover .ql-fill { fill: #3a9ad9; }
+        .write-body .ql-snow button:hover .ql-stroke,
         .write-body .ql-snow button.ql-active .ql-stroke { stroke: #3a9ad9; }
+        .write-body .ql-snow button:hover .ql-fill,
         .write-body .ql-snow button.ql-active .ql-fill { fill: #3a9ad9; }
+        .write-body .ql-snow .ql-picker-label:hover,
+        .write-body .ql-snow .ql-picker-label.ql-active { color: #3a9ad9; }
         .write-body .ql-editor blockquote { border-left: 3px solid #3a9ad9; padding-left: 1em; color: #5a7a9a; }
-        /* Quill 글씨체 매핑 */
+        .write-body .ql-editor table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        .write-body .ql-editor table td { border: 1px solid #d0e3f2; padding: 8px 12px; }
+        .write-body .ql-editor img { max-width: 100%; height: auto; border-radius: 4px; }
+        .write-body .ql-editor hr { border: none; border-top: 1px solid #d0e3f2; margin: 1.5em 0; }
+
+        /* 글씨체 매핑 */
         .ql-font-malgun-gothic { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; }
         .ql-font-noto-sans-kr { font-family: 'Noto Sans KR', sans-serif; }
         .ql-font-nanum-gothic { font-family: 'Nanum Gothic', sans-serif; }
         .ql-font-nanum-myeongjo { font-family: 'Nanum Myeongjo', serif; }
         .ql-font-georgia { font-family: Georgia, serif; }
         .ql-font-monospace { font-family: monospace; }
-        /* Quill 글씨체 드롭다운 레이블 */
+        .ql-font-arial { font-family: Arial, Helvetica, sans-serif; }
+        .ql-font-times-new-roman { font-family: 'Times New Roman', Times, serif; }
+
+        /* 글씨체 드롭다운 레이블 */
         .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="malgun-gothic"]::before,
         .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="malgun-gothic"]::before { content: '맑은 고딕'; font-family: 'Malgun Gothic', sans-serif; }
         .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="noto-sans-kr"]::before,
@@ -42,6 +53,51 @@
         .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="georgia"]::before { content: 'Georgia'; font-family: Georgia, serif; }
         .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="monospace"]::before,
         .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="monospace"]::before { content: 'Monospace'; font-family: monospace; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="arial"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="arial"]::before { content: 'Arial'; font-family: Arial, sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="times-new-roman"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="times-new-roman"]::before { content: 'Times New Roman'; font-family: 'Times New Roman', serif; }
+
+        /* 글씨 크기 드롭다운 */
+        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="9pt"]::before,
+        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="9pt"]::before { content: '9pt'; }
+        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="10pt"]::before,
+        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="10pt"]::before { content: '10pt'; }
+        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="11pt"]::before,
+        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="11pt"]::before { content: '11pt'; }
+        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="12pt"]::before,
+        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="12pt"]::before { content: '12pt'; }
+        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="14pt"]::before,
+        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="14pt"]::before { content: '14pt'; }
+        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="16pt"]::before,
+        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="16pt"]::before { content: '16pt'; }
+        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="18pt"]::before,
+        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="18pt"]::before { content: '18pt'; }
+        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="20pt"]::before,
+        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="20pt"]::before { content: '20pt'; }
+        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="24pt"]::before,
+        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="24pt"]::before { content: '24pt'; }
+        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="28pt"]::before,
+        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="28pt"]::before { content: '28pt'; }
+        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="36pt"]::before,
+        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="36pt"]::before { content: '36pt'; }
+        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="48pt"]::before,
+        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="48pt"]::before { content: '48pt'; }
+
+        /* 구분선 버튼 커스텀 */
+        .ql-divider svg { width: 18px; height: 18px; }
+        .ql-fullscreen svg { width: 18px; height: 18px; }
+
+        /* 전체화면 모드 */
+        body.editor-fullscreen { overflow: hidden; }
+        body.editor-fullscreen .navbar,
+        body.editor-fullscreen .page-nav,
+        body.editor-fullscreen .sidebar,
+        body.editor-fullscreen .sidebar-toggle,
+        body.editor-fullscreen .write-header { display: none !important; }
+        body.editor-fullscreen main { margin-left: 0 !important; width: 100% !important; }
+        body.editor-fullscreen .write-section { height: 100vh !important; }
+        body.editor-fullscreen .write-body { height: 100vh; }
     </style>
 </head>
 <body class="write-page">
@@ -94,45 +150,99 @@
             if (!session) window.location.href = 'login.html';
         })();
 
-        // Quill 글씨체 등록
+        // ── Quill 모듈 등록 ──
         const Font = Quill.import('attributors/class/font');
-        Font.whitelist = ['malgun-gothic', 'noto-sans-kr', 'nanum-gothic', 'nanum-myeongjo', 'georgia', 'monospace'];
+        Font.whitelist = ['malgun-gothic', 'noto-sans-kr', 'nanum-gothic', 'nanum-myeongjo', 'georgia', 'monospace', 'arial', 'times-new-roman'];
         Quill.register(Font, true);
 
         const Size = Quill.import('attributors/style/size');
-        Size.whitelist = ['10px', '12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px', '36px'];
+        Size.whitelist = ['9pt', '10pt', '11pt', '12pt', '14pt', '16pt', '18pt', '20pt', '24pt', '28pt', '36pt', '48pt'];
         Quill.register(Size, true);
 
-        // Quill 에디터 초기화
+        // ── 구분선(HR) 블롯 ──
+        const BlockEmbed = Quill.import('blots/block/embed');
+        class DividerBlot extends BlockEmbed {
+            static blotName = 'divider';
+            static tagName = 'hr';
+        }
+        Quill.register(DividerBlot);
+
+        // ── 커스텀 툴바 아이콘 ──
+        const icons = Quill.import('ui/icons');
+        icons['divider'] = '<svg viewBox="0 0 18 18"><line x1="2" y1="9" x2="16" y2="9" stroke="currentColor" stroke-width="2"/></svg>';
+        icons['fullscreen'] = '<svg viewBox="0 0 18 18"><path d="M2 6V2h4M12 2h4v4M16 12v4h-4M6 16H2v-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+
+        // ── Quill 에디터 초기화 ──
+        const toolbarOptions = {
+            container: [
+                [{ 'header': [1, 2, 3, 4, false] }],
+                [{ 'font': ['', 'malgun-gothic', 'noto-sans-kr', 'nanum-gothic', 'nanum-myeongjo', 'georgia', 'monospace', 'arial', 'times-new-roman'] }],
+                [{ 'size': ['9pt', '10pt', '11pt', false, '14pt', '16pt', '18pt', '20pt', '24pt', '28pt', '36pt', '48pt'] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'script': 'sub' }, { 'script': 'super' }],
+                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                [{ 'indent': '-1' }, { 'indent': '+1' }],
+                [{ 'align': [] }],
+                ['blockquote', 'code-block'],
+                ['divider'],
+                ['link', 'image', 'video'],
+                ['clean', 'fullscreen']
+            ],
+            handlers: {
+                'divider': function() {
+                    const range = this.quill.getSelection(true);
+                    this.quill.insertText(range.index, '\n', Quill.sources.USER);
+                    this.quill.insertEmbed(range.index + 1, 'divider', true, Quill.sources.USER);
+                    this.quill.setSelection(range.index + 2, Quill.sources.SILENT);
+                },
+                'fullscreen': function() {
+                    document.body.classList.toggle('editor-fullscreen');
+                    const btn = document.querySelector('.ql-fullscreen');
+                    if (btn) btn.classList.toggle('ql-active', document.body.classList.contains('editor-fullscreen'));
+                }
+            }
+        };
+
         const quill = new Quill('#editor-container', {
             theme: 'snow',
             placeholder: '내용을 입력하세요...',
             modules: {
-                toolbar: [
-                    [{ 'header': [1, 2, 3, false] }],
-                    [{ 'font': ['', 'malgun-gothic', 'noto-sans-kr', 'nanum-gothic', 'nanum-myeongjo', 'georgia', 'monospace'] }],
-                    [{ 'size': ['10px', '12px', '14px', false, '18px', '20px', '24px', '28px', '32px', '36px'] }],
-                    ['bold', 'italic', 'underline', 'strike'],
-                    [{ 'color': [] }, { 'background': [] }],
-                    [{ 'script': 'sub' }, { 'script': 'super' }],
-                    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                    [{ 'indent': '-1' }, { 'indent': '+1' }],
-                    [{ 'align': [] }],
-                    ['blockquote'],
-                    ['link', 'image'],
-                    ['clean']
-                ]
+                toolbar: toolbarOptions,
+                history: { delay: 1000, maxStack: 200, userOnly: true }
             }
         });
 
         const charCount = document.getElementById('char-count');
 
-        // 글자 수 업데이트
+        // 글자 수
         quill.on('text-change', () => {
             charCount.textContent = quill.getText().replace(/\n/g, '').length.toLocaleString();
         });
 
-        // 저장 위치 옵션 갱신
+        // 이미지 붙여넣기/드롭 시 base64로 삽입 (기본 동작)
+        // Tab 키로 들여쓰기
+        quill.keyboard.addBinding({ key: 'Tab' }, function(range) {
+            quill.formatLine(range.index, 1, 'indent', '+1');
+            return false;
+        });
+
+        // Ctrl+S 저장 단축키
+        quill.keyboard.addBinding({ key: 'S', shortKey: true }, function() {
+            document.getElementById('save-btn').click();
+            return false;
+        });
+
+        // ESC로 전체화면 해제
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.body.classList.contains('editor-fullscreen')) {
+                document.body.classList.remove('editor-fullscreen');
+                const btn = document.querySelector('.ql-fullscreen');
+                if (btn) btn.classList.remove('ql-active');
+            }
+        });
+
+        // ── 저장 위치 옵션 갱신 ──
         function refreshLocationOptions() {
             const sel = document.getElementById('save-location');
             sel.innerHTML = '<option value="">전체</option>';
@@ -164,6 +274,7 @@
             })();
         }
 
+        // ── 저장 ──
         document.getElementById('save-btn').addEventListener('click', async () => {
             const btn = document.getElementById('save-btn');
             btn.disabled = true;
@@ -174,7 +285,6 @@
             const content = quill.root.innerHTML;
 
             if (editingNovelId) {
-                // 수정 모드: UPDATE
                 const { error } = await sb.from('novels').update({
                     title: title,
                     content: content
@@ -187,7 +297,6 @@
                     btn.textContent = '수정 저장';
                 }
             } else {
-                // 새 글 모드: INSERT
                 const novel = {
                     user_id: session.user.id,
                     title: title,
@@ -206,7 +315,6 @@
                         window.sidebarTree.addNovelNode(locationId, novelId, title);
                     }
                     document.getElementById('save-status').textContent = '저장됨 ' + new Date().toLocaleTimeString();
-                    // 저장 후 에디터 초기화 (새 글 모드 유지)
                     document.getElementById('novel-title').value = '';
                     document.getElementById('novel-subtitle').value = '';
                     quill.setContents([]);
