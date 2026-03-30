@@ -118,7 +118,7 @@ function initSidebar() {
     toolboxPanel.querySelector('#tool-delete-all').addEventListener('click', async function () {
         if (!confirm('기본 카테고리를 제외한 모든 항목을 삭제하시겠습니까?')) return;
         var novelIds = [];
-        tree.forEach(function (n) { if (!n.fixed) novelIds = novelIds.concat(collectNovelIds(n)); });
+        tree.forEach(function (n) { novelIds = novelIds.concat(collectNovelIds(n)); });
         deleteNonFixed(tree);
         selectedIds = {};
         renderTree();
