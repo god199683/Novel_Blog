@@ -811,11 +811,7 @@ function initSidebar() {
                 saveTree(tree);
                 renderTree();
                 window.dispatchEvent(new CustomEvent('novels-changed'));
-                if (validCount === 1 && lastNovelId) {
-                    window.location.href = 'write?edit=' + lastNovelId;
-                } else {
-                    alert('불러오기 완료 (' + validCount + '편)');
-                }
+                alert('불러오기 완료 (' + validCount + '편)');
             };
             reader.readAsText(file);
         } else if (ext === 'doc' || ext === 'docx' || ext === 'html' || ext === 'htm') {
@@ -846,11 +842,7 @@ function initSidebar() {
                 saveTree(tree);
                 renderTree();
                 window.dispatchEvent(new CustomEvent('novels-changed'));
-                if (importCount === 1 && lastNovelId) {
-                    window.location.href = 'write?edit=' + lastNovelId;
-                } else {
-                    alert('불러오기 완료 (' + importCount + '편)');
-                }
+                alert('불러오기 완료 (' + importCount + '편)');
             };
             reader.readAsText(file);
         } else if (ext === 'pdf') {
