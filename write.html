@@ -283,13 +283,17 @@
 
             const { data: { session } } = await sb.auth.getSession();
             const title = document.getElementById('novel-title').value || '제목 없음';
+            const subtitle = document.getElementById('novel-subtitle').value || '';
             const content = quill.root.innerHTML;
 
             if (editingNovelId) {
-                const { error } = await sb.from('novels').update({
-                    title: title,
-                    content: content
-                }).eq('id', editingNovelId);
+                const updateData = { title: title, content: content };
+                if (subtitle) updateData.subtitle = subtitle;
+                let { error } = await sb.from('novels').update(updateData).eq('id', editingNovelId);
+                if (error && updateData.subtitle !== undefined) {
+                    delete updateData.subtitle;
+                    ({ error } = await sb.from('novels').update(updateData).eq('id', editingNovelId));
+                }
 
                 if (error) {
                     btn.textContent = '저장 실패';
@@ -318,8 +322,13 @@
                     status: 'draft',
                     created_at: new Date().toISOString()
                 };
+                if (subtitle) novel.subtitle = subtitle;
 
-                const { data, error } = await sb.from('novels').insert([novel]).select();
+                let { data, error } = await sb.from('novels').insert([novel]).select();
+                if (error && novel.subtitle !== undefined) {
+                    delete novel.subtitle;
+                    ({ data, error } = await sb.from('novels').insert([novel]).select());
+                }
                 if (error) {
                     btn.textContent = '저장 실패';
                 } else {
