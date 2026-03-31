@@ -15,7 +15,58 @@ function initSidebar() {
             return data;
         } catch (e) { return [JSON.parse(JSON.stringify(DEFAULT_CATEGORY))]; }
     }
-    function saveTree(tree) { localStorage.setItem(STORAGE_KEY, JSON.stringify(tree)); }
+    function saveTree(tree) { localStorage.setItem(STORAGE_KEY, JSON.stringify(tree)); saveTreeToSupabase(tree); }
+
+    // Supabase 동기화
+    var _saveTimer = null;
+    function saveTreeToSupabase(treeData) {
+        clearTimeout(_saveTimer);
+        _saveTimer = setTimeout(async function () {
+            if (!window.sb) return;
+            try {
+                var sess = await sb.auth.getSession();
+                var uid = sess.data.session ? sess.data.session.user.id : null;
+                if (!uid) return;
+                await sb.from('user_settings').upsert({
+                    user_id: uid,
+                    key: 'sidebar_tree',
+                    value: JSON.stringify(treeData)
+                }, { onConflict: 'user_id,key' });
+            } catch (e) { /* 테이블 없으면 무시 */ }
+        }, 1000);
+    }
+
+    async function loadTreeFromSupabase() {
+        if (!window.sb) return null;
+        try {
+            var sess = await sb.auth.getSession();
+            var uid = sess.data.session ? sess.data.session.user.id : null;
+            if (!uid) return null;
+            var res = await sb.from('user_settings').select('value').eq('user_id', uid).eq('key', 'sidebar_tree').single();
+            if (!res.error && res.data && res.data.value) {
+                return JSON.parse(res.data.value);
+            }
+        } catch (e) { /* 테이블 없으면 무시 */ }
+        return null;
+    }
+
+    async function syncTreeFromNovels() {
+        if (!window.sb) return null;
+        try {
+            var sess = await sb.auth.getSession();
+            var uid = sess.data.session ? sess.data.session.user.id : null;
+            if (!uid) return null;
+            var res = await sb.from('novels').select('id, title').eq('user_id', uid).order('created_at', { ascending: true });
+            if (!res.error && res.data && res.data.length > 0) {
+                var allCat = JSON.parse(JSON.stringify(DEFAULT_CATEGORY));
+                res.data.forEach(function (n) {
+                    allCat.children.push({ id: 'novel_' + n.id, type: 'memo', name: n.title || '제목 없음' });
+                });
+                return [allCat];
+            }
+        } catch (e) { /* 무시 */ }
+        return null;
+    }
     function genId() { return '_' + Math.random().toString(36).substr(2, 9); }
 
     // ── DOM ──
@@ -214,7 +265,6 @@ function initSidebar() {
         menu.className = 'tree-add-menu tree-grouped-menu';
         menu.innerHTML =
             '<div class="menu-group-label">소설 관리</div>' +
-            '<button data-action="edit">수정</button>' +
             '<button data-action="manage-page">소설 관리 페이지</button>' +
             '<div class="menu-group-divider"></div>' +
             '<div class="menu-group-label">추가</div>' +
@@ -271,11 +321,6 @@ function initSidebar() {
                     importNovelFile(file);
                 });
                 input.click();
-            } else if (action === 'edit') {
-                closeAddMenu();
-                showNovelPicker(function (novelId) {
-                    window.location.href = 'write?edit=' + novelId;
-                });
             } else if (action === 'manage-page') {
                 closeAddMenu();
                 window.location.href = 'manage.html';
@@ -1034,6 +1079,42 @@ function initSidebar() {
     };
 
     renderTree();
+
+    // localStorage가 비어있으면 Supabase에서 트리 복원
+    (async function () {
+        var localData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        var hasNovels = false;
+        function checkNovels(nodes) {
+            nodes.forEach(function (n) {
+                if (n.id && n.id.indexOf('novel_') === 0) hasNovels = true;
+                if (n.children) checkNovels(n.children);
+            });
+        }
+        checkNovels(localData);
+
+        if (!hasNovels) {
+            // 1차: user_settings에서 복원 시도
+            var cloudTree = await loadTreeFromSupabase();
+            if (cloudTree && cloudTree.length > 0) {
+                tree.length = 0;
+                cloudTree.forEach(function (n) { tree.push(n); });
+                if (!tree.find(function (n) { return n.id === '_all'; })) {
+                    tree.unshift(JSON.parse(JSON.stringify(DEFAULT_CATEGORY)));
+                }
+                saveTree(tree);
+                renderTree();
+            } else {
+                // 2차: novels 테이블에서 자동 구성
+                var novelsTree = await syncTreeFromNovels();
+                if (novelsTree) {
+                    tree.length = 0;
+                    novelsTree.forEach(function (n) { tree.push(n); });
+                    saveTree(tree);
+                    renderTree();
+                }
+            }
+        }
+    })();
 }
 
 initSidebar();
