@@ -114,6 +114,26 @@
 
         function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
+        // 소설 삭제 시 현재 보던 소설이면 초기 상태로
+        const emptyHTML = container.innerHTML;
+        window.addEventListener('novels-changed', function () {
+            if (!currentNovelId) return;
+            // 사이드바 트리에서 해당 노드가 사라졌는지 확인
+            const tree = window.sidebarTree.getTree();
+            function findNode(nodes, id) {
+                for (let i = 0; i < nodes.length; i++) {
+                    if (nodes[i].id === id) return true;
+                    if (nodes[i].children && findNode(nodes[i].children, id)) return true;
+                }
+                return false;
+            }
+            if (!findNode(tree, 'novel_' + currentNovelId)) {
+                currentNovelId = null;
+                editBtn.style.display = 'none';
+                container.innerHTML = emptyHTML;
+            }
+        });
+
         // URL 파라미터로 소설 자동 로드
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('novel')) {

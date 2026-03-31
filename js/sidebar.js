@@ -260,7 +260,8 @@ function initSidebar() {
     // ── 목록 버튼 (그룹 드롭다운) ──
     sidebar.querySelector('#btn-add-list').addEventListener('click', function (e) {
         e.stopPropagation();
-        closeAddMenu();
+        var existing = document.querySelector('.tree-add-menu');
+        if (existing) { closeAddMenu(); return; }
         var menu = document.createElement('div');
         menu.className = 'tree-add-menu tree-grouped-menu';
         menu.innerHTML =
