@@ -85,6 +85,24 @@
         .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="48pt"]::before,
         .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="48pt"]::before { content: '48pt'; }
 
+        /* 줄간격 드롭다운 */
+        .ql-snow .ql-picker.ql-lineHeight { width: 65px; }
+        .ql-snow .ql-picker.ql-lineHeight .ql-picker-label::before { content: '줄간격'; }
+        .ql-snow .ql-picker.ql-lineHeight .ql-picker-item[data-value="1"]::before { content: '1.0'; }
+        .ql-snow .ql-picker.ql-lineHeight .ql-picker-item[data-value="1.2"]::before { content: '1.2'; }
+        .ql-snow .ql-picker.ql-lineHeight .ql-picker-item[data-value="1.5"]::before { content: '1.5'; }
+        .ql-snow .ql-picker.ql-lineHeight .ql-picker-item[data-value="1.8"]::before { content: '1.8'; }
+        .ql-snow .ql-picker.ql-lineHeight .ql-picker-item[data-value="2"]::before { content: '2.0'; }
+        .ql-snow .ql-picker.ql-lineHeight .ql-picker-item[data-value="2.5"]::before { content: '2.5'; }
+        .ql-snow .ql-picker.ql-lineHeight .ql-picker-item[data-value="3"]::before { content: '3.0'; }
+        .ql-snow .ql-picker.ql-lineHeight .ql-picker-label[data-value="1"]::before { content: '1.0'; }
+        .ql-snow .ql-picker.ql-lineHeight .ql-picker-label[data-value="1.2"]::before { content: '1.2'; }
+        .ql-snow .ql-picker.ql-lineHeight .ql-picker-label[data-value="1.5"]::before { content: '1.5'; }
+        .ql-snow .ql-picker.ql-lineHeight .ql-picker-label[data-value="1.8"]::before { content: '1.8'; }
+        .ql-snow .ql-picker.ql-lineHeight .ql-picker-label[data-value="2"]::before { content: '2.0'; }
+        .ql-snow .ql-picker.ql-lineHeight .ql-picker-label[data-value="2.5"]::before { content: '2.5'; }
+        .ql-snow .ql-picker.ql-lineHeight .ql-picker-label[data-value="3"]::before { content: '3.0'; }
+
         /* 구분선 버튼 커스텀 */
         .ql-divider svg { width: 18px; height: 18px; }
         .ql-fullscreen svg { width: 18px; height: 18px; }
@@ -117,6 +135,7 @@
             <a href="write.html" class="page-nav-item active">작성</a>
             <a href="viewer.html" class="page-nav-item">뷰어</a>
             <a href="manage.html" class="page-nav-item">관리</a>
+            <a href="translate.html" class="page-nav-item">번역</a>
         </nav>
         <section class="write-section">
             <div class="write-header">
@@ -160,6 +179,14 @@
         Size.whitelist = ['9pt', '10pt', '11pt', '12pt', '14pt', '16pt', '18pt', '20pt', '24pt', '28pt', '36pt', '48pt'];
         Quill.register(Size, true);
 
+        // ── 줄간격 ──
+        const Parchment = Quill.import('parchment');
+        const LineHeightStyle = new Parchment.StyleAttributor('lineHeight', 'line-height', {
+            scope: Parchment.Scope.BLOCK,
+            whitelist: ['1', '1.2', '1.5', '1.8', '2', '2.5', '3']
+        });
+        Quill.register(LineHeightStyle, true);
+
         // ── 구분선(HR) 블롯 ──
         const BlockEmbed = Quill.import('blots/block/embed');
         class DividerBlot extends BlockEmbed {
@@ -171,6 +198,7 @@
         // ── 커스텀 툴바 아이콘 ──
         const icons = Quill.import('ui/icons');
         icons['divider'] = '<svg viewBox="0 0 18 18"><line x1="2" y1="9" x2="16" y2="9" stroke="currentColor" stroke-width="2"/></svg>';
+        icons['insertTable'] = '<svg viewBox="0 0 18 18"><rect x="2" y="2" width="14" height="14" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="2" y1="7" x2="16" y2="7" stroke="currentColor" stroke-width="1"/><line x1="2" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="1"/><line x1="7" y1="2" x2="7" y2="16" stroke="currentColor" stroke-width="1"/><line x1="12" y1="2" x2="12" y2="16" stroke="currentColor" stroke-width="1"/></svg>';
         icons['fullscreen'] = '<svg viewBox="0 0 18 18"><path d="M2 6V2h4M12 2h4v4M16 12v4h-4M6 16H2v-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
 
         // ── Quill 에디터 초기화 ──
@@ -185,8 +213,9 @@
                 [{ 'list': 'ordered' }, { 'list': 'bullet' }],
                 [{ 'indent': '-1' }, { 'indent': '+1' }],
                 [{ 'align': [] }],
+                [{ 'lineHeight': ['1', '1.2', '1.5', '1.8', '2', '2.5', '3'] }],
                 ['blockquote', 'code-block'],
-                ['divider'],
+                ['divider', 'insertTable'],
                 ['link', 'image', 'video'],
                 ['clean', 'fullscreen']
             ],
@@ -196,6 +225,43 @@
                     this.quill.insertText(range.index, '\n', Quill.sources.USER);
                     this.quill.insertEmbed(range.index + 1, 'divider', true, Quill.sources.USER);
                     this.quill.setSelection(range.index + 2, Quill.sources.SILENT);
+                },
+                'insertTable': function() {
+                    const q = this.quill;
+                    const savedRange = q.getSelection(true);
+                    // 모달로 행/열 입력
+                    const overlay = document.createElement('div');
+                    overlay.className = 'modal-overlay';
+                    overlay.innerHTML =
+                        '<div class="modal-dialog" style="max-width:280px;">' +
+                            '<div class="modal-title">표 삽입</div>' +
+                            '<label style="display:block;margin-bottom:8px;font-size:0.85rem;color:#5a7a9a;">행 수</label>' +
+                            '<input type="number" id="table-rows" value="3" min="1" max="20" style="width:100%;padding:6px 10px;border:1px solid #d0e3f2;border-radius:6px;margin-bottom:12px;font-size:0.9rem;">' +
+                            '<label style="display:block;margin-bottom:8px;font-size:0.85rem;color:#5a7a9a;">열 수</label>' +
+                            '<input type="number" id="table-cols" value="3" min="1" max="20" style="width:100%;padding:6px 10px;border:1px solid #d0e3f2;border-radius:6px;margin-bottom:16px;font-size:0.9rem;">' +
+                            '<div style="display:flex;justify-content:flex-end;gap:8px;">' +
+                                '<button id="table-cancel" class="modal-btn-cancel" style="padding:6px 16px;border:1px solid #d0e3f2;border-radius:6px;background:#fff;color:#5a7a9a;cursor:pointer;">취소</button>' +
+                                '<button id="table-confirm" class="modal-btn-ok" style="padding:6px 16px;border:none;border-radius:6px;background:#3a9ad9;color:#fff;cursor:pointer;">삽입</button>' +
+                            '</div>' +
+                        '</div>';
+                    document.body.appendChild(overlay);
+                    document.getElementById('table-rows').focus();
+                    document.getElementById('table-cancel').addEventListener('click', () => overlay.remove());
+                    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+                    document.getElementById('table-confirm').addEventListener('click', () => {
+                        const r = parseInt(document.getElementById('table-rows').value) || 3;
+                        const c = parseInt(document.getElementById('table-cols').value) || 3;
+                        overlay.remove();
+                        let html = '<table><tbody>';
+                        for (let i = 0; i < r; i++) {
+                            html += '<tr>';
+                            for (let j = 0; j < c; j++) html += '<td><br></td>';
+                            html += '</tr>';
+                        }
+                        html += '</tbody></table>';
+                        const idx = savedRange ? savedRange.index : q.getLength() - 1;
+                        q.clipboard.dangerouslyPasteHTML(idx, html, Quill.sources.USER);
+                    });
                 },
                 'fullscreen': function() {
                     document.body.classList.toggle('editor-fullscreen');
@@ -330,6 +396,17 @@
             })();
         }
 
+        function findNodeInTree(nodes, id) {
+            for (let i = 0; i < nodes.length; i++) {
+                if (nodes[i].id === id) return nodes[i];
+                if (nodes[i].children) {
+                    const found = findNodeInTree(nodes[i].children, id);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
         // ── 저장 ──
         document.getElementById('save-btn').addEventListener('click', async () => {
             const btn = document.getElementById('save-btn');
@@ -370,34 +447,76 @@
                     history.replaceState(null, '', window.location.pathname);
                 }
             } else {
-                const novel = {
-                    user_id: session.user.id,
-                    title: title,
-                    content: content,
-                    status: 'draft',
-                    created_at: new Date().toISOString()
-                };
-                if (subtitle) novel.subtitle = subtitle;
+                const locationId = document.getElementById('save-location').value || null;
 
-                let { data, error } = await sb.from('novels').insert([novel]).select();
-                if (error && novel.subtitle !== undefined) {
-                    delete novel.subtitle;
-                    ({ data, error } = await sb.from('novels').insert([novel]).select());
-                }
-                if (error) {
-                    btn.textContent = '저장 실패';
-                } else {
-                    const locationId = document.getElementById('save-location').value || null;
-                    const novelId = data && data[0] ? data[0].id : Date.now();
-                    if (window.sidebarTree) {
-                        window.sidebarTree.addNovelNode(locationId, novelId, title);
+                // 같은 제목+부제목+같은 폴더에 기존 소설이 있으면 이어붙이기
+                let existingId = null;
+                if (window.sidebarTree) {
+                    const tree = window.sidebarTree.getTree();
+                    const parentNode = locationId ? findNodeInTree(tree, locationId) : findNodeInTree(tree, '_all');
+                    if (parentNode && parentNode.children) {
+                        for (let i = 0; i < parentNode.children.length; i++) {
+                            const child = parentNode.children[i];
+                            if (child.id && child.id.indexOf('novel_') === 0 && child.name === title) {
+                                existingId = child.id.replace('novel_', '');
+                                break;
+                            }
+                        }
                     }
-                    document.getElementById('save-status').textContent = '저장됨 ' + new Date().toLocaleTimeString();
-                    document.getElementById('novel-title').value = '';
-                    document.getElementById('novel-subtitle').value = '';
-                    quill.setContents([]);
-                    charCount.textContent = '0';
-                    btn.textContent = '저장';
+                }
+
+                if (existingId) {
+                    // 기존 소설의 subtitle도 확인
+                    const { data: existingData } = await sb.from('novels').select('subtitle, content').eq('id', existingId).single();
+                    if (existingData && (existingData.subtitle || '') === subtitle) {
+                        // 이어붙이기
+                        const merged = (existingData.content || '') + '<p><br></p>' + content;
+                        const updateData = { content: merged };
+                        let { error } = await sb.from('novels').update(updateData).eq('id', existingId);
+                        if (error) {
+                            btn.textContent = '저장 실패';
+                        } else {
+                            document.getElementById('save-status').textContent = '이어붙이기 완료 ' + new Date().toLocaleTimeString();
+                            document.getElementById('novel-title').value = '';
+                            document.getElementById('novel-subtitle').value = '';
+                            quill.setContents([]);
+                            charCount.textContent = '0';
+                            btn.textContent = '저장';
+                        }
+                    } else {
+                        existingId = null; // subtitle이 다르면 새로 생성
+                    }
+                }
+
+                if (!existingId) {
+                    const novel = {
+                        user_id: session.user.id,
+                        title: title,
+                        content: content,
+                        status: 'draft',
+                        created_at: new Date().toISOString()
+                    };
+                    if (subtitle) novel.subtitle = subtitle;
+
+                    let { data, error } = await sb.from('novels').insert([novel]).select();
+                    if (error && novel.subtitle !== undefined) {
+                        delete novel.subtitle;
+                        ({ data, error } = await sb.from('novels').insert([novel]).select());
+                    }
+                    if (error) {
+                        btn.textContent = '저장 실패';
+                    } else {
+                        const novelId = data && data[0] ? data[0].id : Date.now();
+                        if (window.sidebarTree) {
+                            window.sidebarTree.addNovelNode(locationId, novelId, title);
+                        }
+                        document.getElementById('save-status').textContent = '저장됨 ' + new Date().toLocaleTimeString();
+                        document.getElementById('novel-title').value = '';
+                        document.getElementById('novel-subtitle').value = '';
+                        quill.setContents([]);
+                        charCount.textContent = '0';
+                        btn.textContent = '저장';
+                    }
                 }
             }
             btn.disabled = false;
