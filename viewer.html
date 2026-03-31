@@ -6,12 +6,15 @@
     <title>소설 뷰어 | Novel_Blog</title>
     <link rel="stylesheet" href="css/style.css">
     <style>
-        #viewer-container { flex: 1; overflow-y: auto; min-width: 0; }
+        #viewer-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
         .viewer-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #b0cbde; font-size: 0.95rem; gap: 0.5rem; }
         .viewer-empty svg { width: 48px; height: 48px; stroke: #d0e3f2; margin-bottom: 0.5rem; }
         .novel-reader-subtitle { font-size: 1.1rem; color: #5a7a9a; margin-bottom: 0.5rem; }
+        .novel-reader-header { flex-shrink: 0; padding: 2rem 2rem 0; max-width: 720px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+        .novel-reader-body { flex: 1; overflow-y: auto; }
+        .novel-reader-body-inner { padding: 0 2rem 2rem; max-width: 720px; margin: 0 auto; width: 100%; box-sizing: border-box; }
         .novel-reader-content { word-break: break-word; overflow-wrap: break-word; }
-        .viewer-header { display: flex; justify-content: flex-end; padding: 8px 16px 0; }
+        .viewer-header { display: flex; justify-content: flex-end; padding: 8px 16px 0; flex-shrink: 0; }
         .viewer-edit-btn { display: none; padding: 6px 16px; border: 1px solid #3a9ad9; border-radius: 6px; background: #fff; color: #3a9ad9; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
         .viewer-edit-btn:hover { background: #3a9ad9; color: #fff; }
         .novel-reader-content img { max-width: 100%; height: auto; }
@@ -33,7 +36,7 @@
             <a href="write.html" class="page-nav-item">작성</a>
             <a href="viewer.html" class="page-nav-item active">뷰어</a>
             <a href="manage.html" class="page-nav-item">관리</a>
-            <a href="translate.html" class="page-nav-item">번역</a>
+            <a href="translate.html" class="page-nav-item">DeepL</a>
         </nav>
         <section class="viewer-section">
             <div class="viewer-header">
@@ -104,11 +107,15 @@
             const subtitleHtml = data.subtitle ? '<div class="novel-reader-subtitle">' + escapeHtml(data.subtitle) + '</div>' : '';
 
             container.innerHTML =
-                '<div class="novel-reader">' +
+                '<div class="novel-reader-header">' +
                     '<div class="novel-reader-title">' + escapeHtml(data.title) + '</div>' +
                     subtitleHtml +
                     '<div class="novel-reader-meta">' + date + ' · ' + (data.status === 'draft' ? '임시저장' : '발행됨') + '</div>' +
-                    '<div class="novel-reader-content">' + (data.content || '') + '</div>' +
+                '</div>' +
+                '<div class="novel-reader-body">' +
+                    '<div class="novel-reader-body-inner">' +
+                        '<div class="novel-reader-content">' + (data.content || '') + '</div>' +
+                    '</div>' +
                 '</div>';
         };
 

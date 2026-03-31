@@ -14,7 +14,8 @@
         .translate-btn { padding: 6px 20px; border: none; border-radius: 6px; background: #3a9ad9; color: #fff; font-size: 0.85rem; cursor: pointer; transition: background 0.2s; }
         .translate-btn:hover { background: #2a7ab9; }
         .translate-btn:disabled { background: #b0cbde; cursor: not-allowed; }
-        .translate-panels { display: flex; flex: 1; overflow: hidden; }
+        .translate-panels { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+        .translate-section { min-height: calc(100vh - 120px); }
         .translate-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         .translate-panel + .translate-panel { border-left: 1px solid #e8f2fb; }
         .translate-panel-header { padding: 8px 16px; font-size: 0.82rem; color: #5a7a9a; background: #f7fbff; border-bottom: 1px solid #e8f2fb; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
@@ -26,7 +27,6 @@
         .translate-copy-btn { padding: 4px 10px; border: 1px solid #d0e3f2; border-radius: 4px; background: #fff; color: #5a7a9a; font-size: 0.78rem; cursor: pointer; }
         .translate-copy-btn:hover { background: #e8f2fb; }
         .translate-status { font-size: 0.78rem; color: #7a9ab5; padding: 4px 16px; border-top: 1px solid #e8f2fb; flex-shrink: 0; text-align: right; }
-        .translate-novel-select { max-width: 200px; }
         .api-key-info { font-size: 0.75rem; color: #999; }
     </style>
 </head>
@@ -46,14 +46,10 @@
             <a href="write.html" class="page-nav-item">작성</a>
             <a href="viewer.html" class="page-nav-item">뷰어</a>
             <a href="manage.html" class="page-nav-item">관리</a>
-            <a href="translate.html" class="page-nav-item active">번역</a>
+            <a href="translate.html" class="page-nav-item active">DeepL</a>
         </nav>
         <section class="translate-section">
             <div class="translate-toolbar">
-                <label>소설:</label>
-                <select id="novel-select" class="translate-novel-select">
-                    <option value="">직접 입력</option>
-                </select>
                 <label>원본:</label>
                 <select id="source-lang">
                     <option value="KO" selected>한국어</option>
@@ -90,10 +86,9 @@
                 <div class="translate-panel">
                     <div class="translate-panel-header">
                         <span>원문</span>
-                        <button class="translate-load-btn" id="load-novel-btn">소설 불러오기</button>
                     </div>
                     <div class="translate-panel-body">
-                        <textarea id="source-text" placeholder="번역할 텍스트를 입력하거나 소설을 선택하세요..."></textarea>
+                        <textarea id="source-text" placeholder="번역할 텍스트를 입력하세요..."></textarea>
                     </div>
                 </div>
                 <div class="translate-panel">
@@ -120,13 +115,11 @@
             const { data: { session } } = await sb.auth.getSession();
             if (!session) { window.location.href = 'login.html'; return; }
 
-            const novelSelect = document.getElementById('novel-select');
             const sourceText = document.getElementById('source-text');
             const resultText = document.getElementById('result-text');
             const translateBtn = document.getElementById('translate-btn');
             const apiKeyInput = document.getElementById('api-key');
             const statusEl = document.getElementById('translate-status');
-            const loadNovelBtn = document.getElementById('load-novel-btn');
             const copyResultBtn = document.getElementById('copy-result-btn');
 
             // API 키 localStorage에 저장/복원
@@ -135,58 +128,6 @@
             apiKeyInput.addEventListener('change', () => {
                 localStorage.setItem(APIKEY_STORAGE, apiKeyInput.value);
             });
-
-            // 소설 목록 로드
-            const { data: novels } = await sb.from('novels')
-                .select('id, title')
-                .eq('user_id', session.user.id)
-                .order('created_at', { ascending: false });
-
-            if (novels) {
-                novels.forEach(n => {
-                    const opt = document.createElement('option');
-                    opt.value = n.id;
-                    opt.textContent = n.title || '제목 없음';
-                    novelSelect.appendChild(opt);
-                });
-            }
-
-            // 소설 선택 시 원문에 로드
-            novelSelect.addEventListener('change', async () => {
-                const id = novelSelect.value;
-                if (!id) return;
-                await loadNovelContent(id);
-            });
-
-            loadNovelBtn.addEventListener('click', async () => {
-                const id = novelSelect.value;
-                if (!id) { alert('소설을 선택하세요.'); return; }
-                await loadNovelContent(id);
-            });
-
-            async function loadNovelContent(id) {
-                statusEl.textContent = '소설 불러오는 중...';
-                const { data, error } = await sb.from('novels').select('title, subtitle, content').eq('id', id).single();
-                if (error || !data) { statusEl.textContent = '소설을 불러올 수 없습니다.'; return; }
-                // HTML → 텍스트
-                const tmp = document.createElement('div');
-                tmp.innerHTML = data.content || '';
-                let text = '';
-                if (data.title) text += data.title + '\n';
-                if (data.subtitle) text += data.subtitle + '\n';
-                if (text) text += '\n';
-                text += tmp.textContent || tmp.innerText || '';
-                sourceText.value = text.trim();
-                statusEl.textContent = '소설 로드 완료';
-            }
-
-            // 사이드바 클릭 시 소설 로드
-            window.sidebarTree.onNodeClick = async function (node) {
-                const novelId = node.id.startsWith('novel_') ? node.id.replace('novel_', '') : null;
-                if (!novelId) return;
-                novelSelect.value = novelId;
-                await loadNovelContent(novelId);
-            };
 
             // 번역 실행
             translateBtn.addEventListener('click', async () => {
@@ -273,14 +214,6 @@
                     setTimeout(() => { copyResultBtn.textContent = '복사'; }, 1500);
                 });
             });
-
-            // URL 파라미터로 소설 자동 로드
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('novel')) {
-                const novelId = urlParams.get('novel');
-                novelSelect.value = novelId;
-                await loadNovelContent(novelId);
-            }
         })();
     </script>
 </body>
