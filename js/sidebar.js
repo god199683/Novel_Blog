@@ -33,7 +33,7 @@ function initSidebar() {
                     value: JSON.stringify(treeData)
                 }, { onConflict: 'user_id,key' });
             } catch (e) { /* 테이블 없으면 무시 */ }
-        }, 1000);
+        }, 3000);
     }
 
     async function loadTreeFromSupabase() {
@@ -353,10 +353,10 @@ function initSidebar() {
     };
 
     // ── 렌더링 ──
-    function renderTree() {
+    function renderTree(skipSave) {
         treeContainer.innerHTML = '';
         renderNodes(tree, treeContainer, 0);
-        saveTree(tree);
+        if (!skipSave) saveTree(tree);
     }
 
     function renderNodes(nodes, parent, depth) {
@@ -410,13 +410,13 @@ function initSidebar() {
                         delete selectedIds[node.id];
                         if (node.children) selectAllChildren(node.children, false);
                     }
-                    renderTree();
+                    renderTree(true);
                 });
             }
 
             var toggleEl = row.querySelector('.tree-toggle');
             if (toggleEl) {
-                toggleEl.addEventListener('click', function (e) { e.stopPropagation(); node.open = !isOpen; renderTree(); });
+                toggleEl.addEventListener('click', function (e) { e.stopPropagation(); node.open = !isOpen; renderTree(true); });
             }
 
             // 메모(소설) 클릭 시 뷰어로 이동 또는 콜백 호출
@@ -559,7 +559,7 @@ function initSidebar() {
         labelEl.innerHTML = ''; labelEl.appendChild(input); input.focus(); input.select();
         function finish() { var v = input.value.trim(); if (v) node.name = v; renderTree(); }
         input.addEventListener('blur', finish);
-        input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); finish(); } if (e.key === 'Escape') renderTree(); });
+        input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); finish(); } if (e.key === 'Escape') renderTree(true); });
     }
 
     function showAddMenu(parentNode, anchorEl) {
@@ -855,7 +855,7 @@ function initSidebar() {
                     validCount++;
                 }
                 saveTree(tree);
-                renderTree();
+                renderTree(true);
                 window.dispatchEvent(new CustomEvent('novels-changed'));
                 alert('불러오기 완료 (' + validCount + '편)');
             };
@@ -886,7 +886,7 @@ function initSidebar() {
                     importCount = 1;
                 }
                 saveTree(tree);
-                renderTree();
+                renderTree(true);
                 window.dispatchEvent(new CustomEvent('novels-changed'));
                 alert('불러오기 완료 (' + importCount + '편)');
             };
@@ -1074,7 +1074,7 @@ function initSidebar() {
             if (node) {
                 node.name = newTitle;
                 saveTree(tree);
-                renderTree();
+                renderTree(true);
             }
         }
     };
@@ -1103,7 +1103,7 @@ function initSidebar() {
                     tree.unshift(JSON.parse(JSON.stringify(DEFAULT_CATEGORY)));
                 }
                 saveTree(tree);
-                renderTree();
+                renderTree(true);
             } else {
                 // 2차: novels 테이블에서 자동 구성
                 var novelsTree = await syncTreeFromNovels();
@@ -1111,7 +1111,7 @@ function initSidebar() {
                     tree.length = 0;
                     novelsTree.forEach(function (n) { tree.push(n); });
                     saveTree(tree);
-                    renderTree();
+                    renderTree(true);
                 }
             }
         }

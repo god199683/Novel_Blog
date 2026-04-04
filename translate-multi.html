@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>멀티 번역 | Novel_Blog</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .translate-section { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: calc(100vh - 120px); }
+        .translate-toolbar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid #e8f2fb; background: #f7fbff; flex-shrink: 0; flex-wrap: wrap; }
+        .translate-toolbar label { font-size: 0.82rem; color: #5a7a9a; }
+        .translate-toolbar select { border: 1px solid #d0e3f2; border-radius: 6px; padding: 5px 10px; font-size: 0.85rem; color: #2c3e50; background: #fff; outline: none; }
+        .translate-btn { padding: 6px 20px; border: none; border-radius: 6px; background: #3a9ad9; color: #fff; font-size: 0.85rem; cursor: pointer; transition: background 0.2s; }
+        .translate-btn:hover { background: #2a7ab9; }
+        .translate-btn:disabled { background: #b0cbde; cursor: not-allowed; }
+        .swap-btn { padding: 4px 10px; border: 1px solid #d0e3f2; border-radius: 6px; background: #fff; color: #5a7a9a; font-size: 0.9rem; cursor: pointer; transition: background 0.2s; }
+        .swap-btn:hover { background: #e8f2fb; }
+        .translate-main { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+        .translate-source { flex: 1; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid #e8f2fb; }
+        .translate-results { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .translate-panel-header { padding: 8px 16px; font-size: 0.82rem; color: #5a7a9a; background: #f7fbff; border-bottom: 1px solid #e8f2fb; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .translate-panel-body { flex: 1; overflow-y: auto; padding: 16px; }
+        .translate-panel-body textarea { width: 100%; height: 100%; border: none; outline: none; resize: none; font-size: 10.5pt; line-height: 1.9; color: #2c3e50; font-family: inherit; }
+        .translate-clear-btn, .translate-copy-btn { padding: 4px 10px; border: 1px solid #d0e3f2; border-radius: 4px; background: #fff; color: #5a7a9a; font-size: 0.78rem; cursor: pointer; }
+        .translate-clear-btn:hover, .translate-copy-btn:hover { background: #e8f2fb; }
+        .translate-char-count { font-size: 0.75rem; color: #b0cbde; }
+        .translate-status { font-size: 0.78rem; color: #7a9ab5; padding: 4px 16px; border-top: 1px solid #e8f2fb; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
+
+        /* 엔진별 결과 */
+        .engine-results { flex: 1; overflow-y: auto; }
+        .engine-block { border-bottom: 1px solid #e8f2fb; }
+        .engine-block:last-child { border-bottom: none; }
+        .engine-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: #f7fbff; border-bottom: 1px solid #e8f2fb; cursor: pointer; user-select: none; }
+        .engine-header:hover { background: #eef5fc; }
+        .engine-name { font-size: 0.82rem; font-weight: 600; color: #2c3e50; display: flex; align-items: center; gap: 6px; }
+        .engine-badge { font-size: 0.68rem; padding: 1px 6px; border-radius: 10px; color: #fff; }
+        .engine-badge-google { background: #4285f4; }
+        .engine-badge-mymemory { background: #e67e22; }
+        .engine-badge-lingva { background: #27ae60; }
+        .engine-status { font-size: 0.72rem; color: #b0cbde; }
+        .engine-actions { display: flex; gap: 4px; }
+        .engine-copy-btn { padding: 2px 8px; border: 1px solid #d0e3f2; border-radius: 4px; background: #fff; color: #5a7a9a; font-size: 0.72rem; cursor: pointer; }
+        .engine-copy-btn:hover { background: #e8f2fb; }
+        .engine-body { padding: 12px 16px; font-size: 10.5pt; line-height: 1.9; color: #2c3e50; white-space: pre-wrap; word-break: break-word; }
+        .engine-body.loading { color: #b0cbde; font-style: italic; font-size: 0.85rem; }
+        .engine-body.error { color: #dc2626; font-size: 0.85rem; }
+    </style>
+</head>
+<body class="write-page">
+    <header>
+        <nav class="navbar">
+            <a href="index.html" class="logo">Novel_Blog</a>
+            <ul class="nav-links">
+                <li><a href="login.html" class="login-btn">로그인</a></li>
+                <li><a href="signup.html" class="signup-btn">회원가입</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <nav class="page-nav">
+            <a href="write.html" class="page-nav-item">작성</a>
+            <a href="viewer.html" class="page-nav-item">뷰어</a>
+            <a href="manage.html" class="page-nav-item">관리</a>
+            <a href="translate.html" class="page-nav-item">DeepL</a>
+            <a href="translate-free.html" class="page-nav-item">무료 번역</a>
+            <a href="translate-multi.html" class="page-nav-item active">멀티 번역</a>
+        </nav>
+        <section class="translate-section">
+            <div class="translate-toolbar">
+                <label>원본:</label>
+                <select id="source-lang">
+                    <option value="auto" selected>자동 감지</option>
+                    <option value="ko">한국어</option>
+                    <option value="en">영어</option>
+                    <option value="ja">일본어</option>
+                    <option value="zh-CN">중국어 (간체)</option>
+                    <option value="zh-TW">중국어 (번체)</option>
+                    <option value="de">독일어</option>
+                    <option value="fr">프랑스어</option>
+                    <option value="es">스페인어</option>
+                    <option value="pt">포르투갈어</option>
+                    <option value="ru">러시아어</option>
+                    <option value="it">이탈리아어</option>
+                    <option value="vi">베트남어</option>
+                    <option value="th">태국어</option>
+                    <option value="id">인도네시아어</option>
+                    <option value="ar">아랍어</option>
+                    <option value="hi">힌디어</option>
+                </select>
+                <button class="swap-btn" id="swap-btn" title="언어 교환">⇄</button>
+                <label>번역:</label>
+                <select id="target-lang">
+                    <option value="en" selected>영어</option>
+                    <option value="ko">한국어</option>
+                    <option value="ja">일본어</option>
+                    <option value="zh-CN">중국어 (간체)</option>
+                    <option value="zh-TW">중국어 (번체)</option>
+                    <option value="de">독일어</option>
+                    <option value="fr">프랑스어</option>
+                    <option value="es">스페인어</option>
+                    <option value="pt">포르투갈어</option>
+                    <option value="ru">러시아어</option>
+                    <option value="it">이탈리아어</option>
+                    <option value="vi">베트남어</option>
+                    <option value="th">태국어</option>
+                    <option value="id">인도네시아어</option>
+                    <option value="ar">아랍어</option>
+                    <option value="hi">힌디어</option>
+                </select>
+                <button class="translate-btn" id="translate-btn">번역</button>
+            </div>
+
+            <div class="translate-main">
+                <div class="translate-source">
+                    <div class="translate-panel-header">
+                        <span>원문 <span class="translate-char-count" id="source-count">0자</span></span>
+                        <button class="translate-clear-btn" id="clear-btn">지우기</button>
+                    </div>
+                    <div class="translate-panel-body">
+                        <textarea id="source-text" placeholder="번역할 텍스트를 입력하세요... (Ctrl+Enter로 번역)"></textarea>
+                    </div>
+                </div>
+                <div class="translate-results">
+                    <div class="translate-panel-header">
+                        <span>번역 결과 (3개 엔진 비교)</span>
+                    </div>
+                    <div class="engine-results" id="engine-results">
+                        <div class="engine-block">
+                            <div class="engine-header">
+                                <span class="engine-name"><span class="engine-badge engine-badge-google">G</span> Google Translate</span>
+                                <div class="engine-actions"><button class="engine-copy-btn" data-engine="google">복사</button></div>
+                            </div>
+                            <div class="engine-body" id="result-google">대기 중...</div>
+                        </div>
+                        <div class="engine-block">
+                            <div class="engine-header">
+                                <span class="engine-name"><span class="engine-badge engine-badge-mymemory">M</span> MyMemory</span>
+                                <div class="engine-actions"><button class="engine-copy-btn" data-engine="mymemory">복사</button></div>
+                            </div>
+                            <div class="engine-body" id="result-mymemory">대기 중...</div>
+                        </div>
+                        <div class="engine-block">
+                            <div class="engine-header">
+                                <span class="engine-name"><span class="engine-badge engine-badge-lingva">L</span> Lingva Translate</span>
+                                <div class="engine-actions"><button class="engine-copy-btn" data-engine="lingva">복사</button></div>
+                            </div>
+                            <div class="engine-body" id="result-lingva">대기 중...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="translate-status">
+                <span id="translate-status">3개 번역 엔진 동시 비교 · API 키 불필요</span>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        (async () => {
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) { window.location.href = 'login.html'; return; }
+        })();
+
+        const sourceText = document.getElementById('source-text');
+        const translateBtn = document.getElementById('translate-btn');
+        const statusEl = document.getElementById('translate-status');
+        const clearBtn = document.getElementById('clear-btn');
+        const swapBtn = document.getElementById('swap-btn');
+        const sourceCount = document.getElementById('source-count');
+
+        const resultGoogle = document.getElementById('result-google');
+        const resultMymemory = document.getElementById('result-mymemory');
+        const resultLingva = document.getElementById('result-lingva');
+
+        // 글자 수
+        sourceText.addEventListener('input', () => {
+            sourceCount.textContent = sourceText.value.length.toLocaleString() + '자';
+        });
+
+        // 지우기
+        clearBtn.addEventListener('click', () => {
+            sourceText.value = '';
+            sourceCount.textContent = '0자';
+            resultGoogle.textContent = '대기 중...';
+            resultGoogle.className = 'engine-body';
+            resultMymemory.textContent = '대기 중...';
+            resultMymemory.className = 'engine-body';
+            resultLingva.textContent = '대기 중...';
+            resultLingva.className = 'engine-body';
+            statusEl.textContent = '3개 번역 엔진 동시 비교 · API 키 불필요';
+        });
+
+        // 언어 교환
+        swapBtn.addEventListener('click', () => {
+            const srcLang = document.getElementById('source-lang');
+            const tgtLang = document.getElementById('target-lang');
+            if (srcLang.value === 'auto') return;
+            const tmp = srcLang.value;
+            srcLang.value = tgtLang.value;
+            tgtLang.value = tmp;
+        });
+
+        // Ctrl+Enter
+        sourceText.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                translateBtn.click();
+            }
+        });
+
+        // 언어 코드 변환 (각 엔진에 맞게)
+        function langForMyMemory(code) {
+            const map = { 'auto': '', 'zh-CN': 'zh', 'zh-TW': 'zh-TW' };
+            return map[code] !== undefined ? map[code] : code;
+        }
+        function langForLingva(code) {
+            const map = { 'auto': 'auto', 'zh-CN': 'zh', 'zh-TW': 'zh_HANT' };
+            return map[code] !== undefined ? map[code] : code;
+        }
+
+        // ── 텍스트 분할 ──
+        function splitChunks(text, maxLen) {
+            const chunks = [];
+            let remaining = text;
+            while (remaining.length > 0) {
+                if (remaining.length <= maxLen) { chunks.push(remaining); break; }
+                let cutAt = remaining.lastIndexOf('\n', maxLen);
+                if (cutAt < maxLen * 0.3) {
+                    cutAt = remaining.lastIndexOf('. ', maxLen);
+                    if (cutAt < maxLen * 0.3) cutAt = maxLen;
+                    else cutAt += 1;
+                }
+                chunks.push(remaining.substring(0, cutAt));
+                remaining = remaining.substring(cutAt).trimStart();
+            }
+            return chunks;
+        }
+
+        // ── Google Translate ──
+        async function translateGoogle(text, srcLang, tgtLang) {
+            const chunks = splitChunks(text, 4500);
+            let result = '';
+            for (let i = 0; i < chunks.length; i++) {
+                const url = 'https://translate.googleapis.com/translate_a/single?client=gtx'
+                    + '&sl=' + encodeURIComponent(srcLang)
+                    + '&tl=' + encodeURIComponent(tgtLang)
+                    + '&dt=t&q=' + encodeURIComponent(chunks[i]);
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                if (data && data[0]) {
+                    for (let j = 0; j < data[0].length; j++) {
+                        if (data[0][j] && data[0][j][0]) result += data[0][j][0];
+                    }
+                }
+                if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 200));
+            }
+            return result;
+        }
+
+        // ── MyMemory ──
+        async function translateMyMemory(text, srcLang, tgtLang) {
+            const src = langForMyMemory(srcLang);
+            const tgt = langForMyMemory(tgtLang);
+            const chunks = splitChunks(text, 4500);
+            let result = '';
+            for (let i = 0; i < chunks.length; i++) {
+                const langpair = (src || 'autodetect') + '|' + tgt;
+                const url = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(chunks[i]) + '&langpair=' + encodeURIComponent(langpair);
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                if (data.responseStatus === 200 && data.responseData) {
+                    result += data.responseData.translatedText;
+                } else {
+                    throw new Error(data.responseDetails || '번역 실패');
+                }
+                if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 300));
+            }
+            return result;
+        }
+
+        // ── Lingva Translate ──
+        async function translateLingva(text, srcLang, tgtLang) {
+            const src = langForLingva(srcLang);
+            const tgt = langForLingva(tgtLang);
+            const chunks = splitChunks(text, 4500);
+            let result = '';
+            for (let i = 0; i < chunks.length; i++) {
+                const url = 'https://lingva.ml/api/v1/' + encodeURIComponent(src) + '/' + encodeURIComponent(tgt) + '/' + encodeURIComponent(chunks[i]);
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                if (data.translation) {
+                    result += data.translation;
+                } else {
+                    throw new Error('번역 결과 없음');
+                }
+                if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 200));
+            }
+            return result;
+        }
+
+        // ── 번역 실행 (3개 엔진 동시) ──
+        translateBtn.addEventListener('click', async () => {
+            const text = sourceText.value.trim();
+            if (!text) { alert('번역할 텍스트를 입력하세요.'); return; }
+
+            const srcLang = document.getElementById('source-lang').value;
+            const tgtLang = document.getElementById('target-lang').value;
+
+            translateBtn.disabled = true;
+            translateBtn.textContent = '번역 중...';
+            statusEl.textContent = '3개 엔진 동시 번역 중...';
+
+            // 모든 결과를 로딩 상태로
+            resultGoogle.textContent = '번역 중...';
+            resultGoogle.className = 'engine-body loading';
+            resultMymemory.textContent = '번역 중...';
+            resultMymemory.className = 'engine-body loading';
+            resultLingva.textContent = '번역 중...';
+            resultLingva.className = 'engine-body loading';
+
+            let completed = 0;
+
+            function onDone() {
+                completed++;
+                statusEl.textContent = completed + '/3 엔진 완료';
+                if (completed >= 3) {
+                    translateBtn.disabled = false;
+                    translateBtn.textContent = '번역';
+                    statusEl.textContent = '번역 완료 (원문 ' + text.length.toLocaleString() + '자)';
+                }
+            }
+
+            // 3개 엔진 동시 실행
+            const p1 = translateGoogle(text, srcLang, tgtLang).then(r => {
+                resultGoogle.textContent = r;
+                resultGoogle.className = 'engine-body';
+                onDone();
+            }).catch(e => {
+                resultGoogle.textContent = '번역 실패: ' + e.message;
+                resultGoogle.className = 'engine-body error';
+                onDone();
+            });
+
+            const p2 = translateMyMemory(text, srcLang, tgtLang).then(r => {
+                resultMymemory.textContent = r;
+                resultMymemory.className = 'engine-body';
+                onDone();
+            }).catch(e => {
+                resultMymemory.textContent = '번역 실패: ' + e.message;
+                resultMymemory.className = 'engine-body error';
+                onDone();
+            });
+
+            const p3 = translateLingva(text, srcLang, tgtLang).then(r => {
+                resultLingva.textContent = r;
+                resultLingva.className = 'engine-body';
+                onDone();
+            }).catch(e => {
+                resultLingva.textContent = '번역 실패: ' + e.message;
+                resultLingva.className = 'engine-body error';
+                onDone();
+            });
+
+            await Promise.allSettled([p1, p2, p3]);
+        });
+
+        // 엔진별 복사
+        document.getElementById('engine-results').addEventListener('click', (e) => {
+            const btn = e.target.closest('.engine-copy-btn');
+            if (!btn) return;
+            const engine = btn.dataset.engine;
+            const el = document.getElementById('result-' + engine);
+            if (!el || el.classList.contains('loading') || el.textContent === '대기 중...') return;
+            navigator.clipboard.writeText(el.textContent).then(() => {
+                btn.textContent = '복사됨!';
+                setTimeout(() => { btn.textContent = '복사'; }, 1500);
+            });
+        });
+    </script>
+</body>
+</html>

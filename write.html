@@ -276,20 +276,26 @@
             placeholder: '내용을 입력하세요...',
             modules: {
                 toolbar: toolbarOptions,
-                history: { delay: 1000, maxStack: 200, userOnly: true }
+                history: { delay: 1000, maxStack: 50, userOnly: true }
             }
         });
 
-        // 툴바 클릭 시 에디터 포커스 유지 (더블클릭 방지)
+        // 툴바 버튼 클릭 시 에디터 포커스 유지 (더블클릭 방지, 드롭다운은 제외)
         document.querySelector('.ql-toolbar').addEventListener('mousedown', function(e) {
-            e.preventDefault();
+            if (e.target.closest('button')) {
+                e.preventDefault();
+            }
         });
 
         const charCount = document.getElementById('char-count');
 
-        // 글자 수
+        // 글자 수 (디바운스)
+        let _charTimer = null;
         quill.on('text-change', () => {
-            charCount.textContent = quill.getText().replace(/\n/g, '').length.toLocaleString();
+            clearTimeout(_charTimer);
+            _charTimer = setTimeout(() => {
+                charCount.textContent = quill.getText().replace(/\n/g, '').length.toLocaleString();
+            }, 300);
         });
 
         // 이미지 붙여넣기/드롭 시 base64로 삽입 (기본 동작)
@@ -382,18 +388,20 @@
 
                     document.getElementById('novel-title').value = title;
                     document.getElementById('novel-subtitle').value = subtitle;
-                    quill.clipboard.dangerouslyPasteHTML(content);
+                    // 히스토리 비활성화 후 콘텐츠 로드 (대용량 문서 렉 방지)
+                    quill.history.clear();
+                    quill.root.innerHTML = content;
                     charCount.textContent = quill.getText().replace(/\n/g, '').length.toLocaleString();
                     document.getElementById('save-btn').textContent = '수정 저장';
 
-                    // 본문에서 제목/부제목을 추출했으면 DB와 사이드바에도 반영
-                    if (title !== (data.title || '') || subtitle !== (data.subtitle || '') || content !== (data.content || '')) {
-                        const updateData = { title: title, content: content };
+                    // 본문에서 제목/부제목을 추출했으면 DB에 반영
+                    if (title !== (data.title || '') || subtitle !== (data.subtitle || '')) {
+                        const updateData = { title: title };
                         if (subtitle) updateData.subtitle = subtitle;
-                        await sb.from('novels').update(updateData).eq('id', editingNovelId);
-                        if (window.sidebarTree) {
-                            window.sidebarTree.updateNovelTitle(editingNovelId, title);
-                        }
+                        if (content !== (data.content || '')) updateData.content = content;
+                        sb.from('novels').update(updateData).eq('id', editingNovelId).then(() => {
+                            if (window.sidebarTree) window.sidebarTree.updateNovelTitle(editingNovelId, title);
+                        });
                     }
                 } else {
                     editingNovelId = null;
