@@ -180,6 +180,7 @@ body { background-color: #ffffff; color: #333; line-height: 1.6; }
 /* 라벨 */
 .tree-label { flex: 1; font-size: 0.88rem; color: #2c3e50; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tree-label-category { font-weight: 700; font-size: 0.85rem; color: #5a7a9a; text-transform: uppercase; letter-spacing: 0.3px; margin-left: 4px; }
+.tree-subtitle { display: block; font-size: 0.72rem; color: #7a9ab5; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 
 /* 액션 버튼 */
 .tree-actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; flex-shrink: 0; }

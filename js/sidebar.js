@@ -66,11 +66,13 @@ function initSidebar() {
             var sess = await sb.auth.getSession();
             var uid = sess.data.session ? sess.data.session.user.id : null;
             if (!uid) return null;
-            var res = await sb.from('novels').select('id, title').eq('user_id', uid).neq('title', TREE_RECORD_TITLE).order('created_at', { ascending: true });
+            var res = await sb.from('novels').select('id, title, subtitle').eq('user_id', uid).neq('title', TREE_RECORD_TITLE).order('created_at', { ascending: true });
             if (!res.error && res.data && res.data.length > 0) {
                 var allCat = JSON.parse(JSON.stringify(DEFAULT_CATEGORY));
                 res.data.forEach(function (n) {
-                    allCat.children.push({ id: 'novel_' + n.id, type: 'memo', name: n.title || '제목 없음' });
+                    var node = { id: 'novel_' + n.id, type: 'memo', name: n.title || '제목 없음' };
+                    if (n.subtitle) node.subtitle = n.subtitle;
+                    allCat.children.push(node);
                 });
                 return [allCat];
             }
@@ -400,7 +402,9 @@ function initSidebar() {
             row.className = 'tree-row';
             row.innerHTML =
                 guides + chevronHtml + checkboxHtml + iconHtml +
-                '<span class="tree-label' + (node.type === 'category' ? ' tree-label-category' : '') + '">' + escapeHtml(node.name) + '</span>' +
+                '<span class="tree-label' + (node.type === 'category' ? ' tree-label-category' : '') + '">' + escapeHtml(node.name) +
+                    (node.subtitle ? '<span class="tree-subtitle">' + escapeHtml(node.subtitle) + '</span>' : '') +
+                '</span>' +
                 '<span class="tree-actions">' +
                     (isContainer ? '<button class="tree-btn tree-btn-add" title="하위 추가">+</button>' : '') +
                     (!node.fixed ? '<button class="tree-btn tree-btn-del" title="삭제">&times;</button>' : '') +
@@ -934,6 +938,7 @@ function initSidebar() {
         if (res.data && res.data[0]) {
             var novelId = res.data[0].id;
             var node = { id: 'novel_' + novelId, type: 'memo', name: title || '제목 없음' };
+            if (subtitle) node.subtitle = subtitle;
             var allCat = findNodeById(tree, '_all');
             if (allCat) { allCat.children.push(node); } else tree.push(node);
             return novelId;
@@ -1061,8 +1066,9 @@ function initSidebar() {
             collectContainers(tree, result, 0);
             return result;
         },
-        addNovelNode: function (parentId, novelId, title) {
+        addNovelNode: function (parentId, novelId, title, subtitle) {
             var node = { id: 'novel_' + novelId, type: 'memo', name: title };
+            if (subtitle) node.subtitle = subtitle;
             if (parentId) {
                 var parent = findNodeById(tree, parentId);
                 if (parent) { if (!parent.children) parent.children = []; parent.children.push(node); parent.open = true; }
@@ -1128,7 +1134,7 @@ function initSidebar() {
             }
 
             // DB의 모든 소설 조회 (트리 데이터 레코드 제외)
-            var res = await sb.from('novels').select('id, title').eq('user_id', uid).neq('title', TREE_RECORD_TITLE).order('created_at', { ascending: true });
+            var res = await sb.from('novels').select('id, title, subtitle').eq('user_id', uid).neq('title', TREE_RECORD_TITLE).order('created_at', { ascending: true });
             if (res.error || !res.data || res.data.length === 0) return;
 
             // 트리에 없는 소설 추가
@@ -1136,15 +1142,25 @@ function initSidebar() {
             if (!allCat) { allCat = JSON.parse(JSON.stringify(DEFAULT_CATEGORY)); tree.unshift(allCat); }
 
             var added = 0;
+            var updated = 0;
             res.data.forEach(function (n) {
                 var nodeId = 'novel_' + n.id;
                 if (!existingIds[nodeId]) {
-                    allCat.children.push({ id: nodeId, type: 'memo', name: n.title || '제목 없음' });
+                    var newNode = { id: nodeId, type: 'memo', name: n.title || '제목 없음' };
+                    if (n.subtitle) newNode.subtitle = n.subtitle;
+                    allCat.children.push(newNode);
                     added++;
+                } else {
+                    // 기존 노드에 부제목이 없으면 DB에서 가져와 업데이트
+                    var existing = findNodeById(tree, nodeId);
+                    if (existing && n.subtitle && !existing.subtitle) {
+                        existing.subtitle = n.subtitle;
+                        updated++;
+                    }
                 }
             });
 
-            if (added > 0 || !hasNovels) {
+            if (added > 0 || updated > 0 || !hasNovels) {
                 saveTree(tree);
                 renderTree(true);
             }

@@ -521,7 +521,7 @@
                     } else {
                         const novelId = data && data[0] ? data[0].id : Date.now();
                         if (window.sidebarTree) {
-                            window.sidebarTree.addNovelNode(locationId, novelId, title);
+                            window.sidebarTree.addNovelNode(locationId, novelId, title, subtitle);
                         }
                         document.getElementById('save-status').textContent = '저장됨 ' + new Date().toLocaleTimeString();
                         document.getElementById('novel-title').value = '';
