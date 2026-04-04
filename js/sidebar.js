@@ -17,7 +17,8 @@ function initSidebar() {
     }
     function saveTree(tree) { localStorage.setItem(STORAGE_KEY, JSON.stringify(tree)); saveTreeToSupabase(tree); }
 
-    // Supabase 동기화
+    // Supabase 동기화 (novels 테이블의 특수 레코드에 저장)
+    var TREE_RECORD_TITLE = '__sidebar_tree__';
     var _saveTimer = null;
     function saveTreeToSupabase(treeData) {
         clearTimeout(_saveTimer);
@@ -27,12 +28,21 @@ function initSidebar() {
                 var sess = await sb.auth.getSession();
                 var uid = sess.data.session ? sess.data.session.user.id : null;
                 if (!uid) return;
-                await sb.from('user_settings').upsert({
-                    user_id: uid,
-                    key: 'sidebar_tree',
-                    value: JSON.stringify(treeData)
-                }, { onConflict: 'user_id,key' });
-            } catch (e) { /* 테이블 없으면 무시 */ }
+                var treeJson = JSON.stringify(treeData);
+                // 기존 레코드 찾기
+                var existing = await sb.from('novels').select('id').eq('user_id', uid).eq('title', TREE_RECORD_TITLE).single();
+                if (existing.data) {
+                    await sb.from('novels').update({ content: treeJson }).eq('id', existing.data.id);
+                } else {
+                    await sb.from('novels').insert([{
+                        user_id: uid,
+                        title: TREE_RECORD_TITLE,
+                        content: treeJson,
+                        status: 'system',
+                        created_at: new Date().toISOString()
+                    }]);
+                }
+            } catch (e) { /* 무시 */ }
         }, 3000);
     }
 
@@ -42,11 +52,11 @@ function initSidebar() {
             var sess = await sb.auth.getSession();
             var uid = sess.data.session ? sess.data.session.user.id : null;
             if (!uid) return null;
-            var res = await sb.from('user_settings').select('value').eq('user_id', uid).eq('key', 'sidebar_tree').single();
-            if (!res.error && res.data && res.data.value) {
-                return JSON.parse(res.data.value);
+            var res = await sb.from('novels').select('content').eq('user_id', uid).eq('title', TREE_RECORD_TITLE).single();
+            if (!res.error && res.data && res.data.content) {
+                return JSON.parse(res.data.content);
             }
-        } catch (e) { /* 테이블 없으면 무시 */ }
+        } catch (e) { /* 무시 */ }
         return null;
     }
 
@@ -56,7 +66,7 @@ function initSidebar() {
             var sess = await sb.auth.getSession();
             var uid = sess.data.session ? sess.data.session.user.id : null;
             if (!uid) return null;
-            var res = await sb.from('novels').select('id, title').eq('user_id', uid).order('created_at', { ascending: true });
+            var res = await sb.from('novels').select('id, title').eq('user_id', uid).neq('title', TREE_RECORD_TITLE).order('created_at', { ascending: true });
             if (!res.error && res.data && res.data.length > 0) {
                 var allCat = JSON.parse(JSON.stringify(DEFAULT_CATEGORY));
                 res.data.forEach(function (n) {
@@ -1079,42 +1089,66 @@ function initSidebar() {
         }
     };
 
-    renderTree();
+    renderTree(true);
 
-    // localStorage가 비어있으면 Supabase에서 트리 복원
+    // Supabase와 동기화: 누락된 소설을 사이드바에 추가
     (async function () {
-        var localData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-        var hasNovels = false;
-        function checkNovels(nodes) {
-            nodes.forEach(function (n) {
-                if (n.id && n.id.indexOf('novel_') === 0) hasNovels = true;
-                if (n.children) checkNovels(n.children);
-            });
-        }
-        checkNovels(localData);
+        if (!window.sb) return;
+        try {
+            var sess = await sb.auth.getSession();
+            var uid = sess.data.session ? sess.data.session.user.id : null;
+            if (!uid) return;
 
-        if (!hasNovels) {
-            // 1차: user_settings에서 복원 시도
-            var cloudTree = await loadTreeFromSupabase();
-            if (cloudTree && cloudTree.length > 0) {
-                tree.length = 0;
-                cloudTree.forEach(function (n) { tree.push(n); });
-                if (!tree.find(function (n) { return n.id === '_all'; })) {
-                    tree.unshift(JSON.parse(JSON.stringify(DEFAULT_CATEGORY)));
-                }
-                saveTree(tree);
-                renderTree(true);
-            } else {
-                // 2차: novels 테이블에서 자동 구성
-                var novelsTree = await syncTreeFromNovels();
-                if (novelsTree) {
+            // 현재 트리에 있는 소설 ID 수집
+            var existingIds = {};
+            function collectIds(nodes) {
+                nodes.forEach(function (n) {
+                    if (n.id && n.id.indexOf('novel_') === 0) existingIds[n.id] = true;
+                    if (n.children) collectIds(n.children);
+                });
+            }
+            collectIds(tree);
+
+            var hasNovels = Object.keys(existingIds).length > 0;
+
+            // 트리가 비어있으면 먼저 user_settings에서 복원 시도
+            if (!hasNovels) {
+                var cloudTree = await loadTreeFromSupabase();
+                if (cloudTree && cloudTree.length > 0) {
                     tree.length = 0;
-                    novelsTree.forEach(function (n) { tree.push(n); });
-                    saveTree(tree);
-                    renderTree(true);
+                    cloudTree.forEach(function (n) { tree.push(n); });
+                    if (!tree.find(function (n) { return n.id === '_all'; })) {
+                        tree.unshift(JSON.parse(JSON.stringify(DEFAULT_CATEGORY)));
+                    }
+                    // 복원된 트리의 ID 재수집
+                    existingIds = {};
+                    collectIds(tree);
+                    hasNovels = Object.keys(existingIds).length > 0;
                 }
             }
-        }
+
+            // DB의 모든 소설 조회 (트리 데이터 레코드 제외)
+            var res = await sb.from('novels').select('id, title').eq('user_id', uid).neq('title', TREE_RECORD_TITLE).order('created_at', { ascending: true });
+            if (res.error || !res.data || res.data.length === 0) return;
+
+            // 트리에 없는 소설 추가
+            var allCat = findNodeById(tree, '_all');
+            if (!allCat) { allCat = JSON.parse(JSON.stringify(DEFAULT_CATEGORY)); tree.unshift(allCat); }
+
+            var added = 0;
+            res.data.forEach(function (n) {
+                var nodeId = 'novel_' + n.id;
+                if (!existingIds[nodeId]) {
+                    allCat.children.push({ id: nodeId, type: 'memo', name: n.title || '제목 없음' });
+                    added++;
+                }
+            });
+
+            if (added > 0 || !hasNovels) {
+                saveTree(tree);
+                renderTree(true);
+            }
+        } catch (e) { /* 무시 */ }
     })();
 }
 

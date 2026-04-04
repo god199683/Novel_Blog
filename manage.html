@@ -75,6 +75,7 @@
                 const { data, error } = await sb.from('novels')
                     .select('*')
                     .eq('user_id', session.user.id)
+                    .neq('title', '__sidebar_tree__')
                     .order('created_at', { ascending: false });
 
                 if (error) { listEl.innerHTML = '<div class="manage-empty">불러오기 실패</div>'; return; }
