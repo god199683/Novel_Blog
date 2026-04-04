@@ -1097,75 +1097,72 @@ function initSidebar() {
 
     renderTree(true);
 
-    // Supabase와 동기화: 누락된 소설을 사이드바에 추가
-    (async function () {
+    // Supabase 동기화 함수
+    function collectNovelIds(nodes) {
+        var ids = {};
+        (function walk(list) {
+            list.forEach(function (n) {
+                if (n.id && n.id.indexOf('novel_') === 0) ids[n.id] = true;
+                if (n.children) walk(n.children);
+            });
+        })(nodes);
+        return ids;
+    }
+
+    async function syncFromSupabase() {
         if (!window.sb) return;
         try {
             var sess = await sb.auth.getSession();
             var uid = sess.data.session ? sess.data.session.user.id : null;
             if (!uid) return;
 
-            // 현재 트리에 있는 소설 ID 수집
-            var existingIds = {};
-            function collectIds(nodes) {
-                nodes.forEach(function (n) {
-                    if (n.id && n.id.indexOf('novel_') === 0) existingIds[n.id] = true;
-                    if (n.children) collectIds(n.children);
-                });
-            }
-            collectIds(tree);
-
-            var hasNovels = Object.keys(existingIds).length > 0;
-
-            // 트리가 비어있으면 먼저 user_settings에서 복원 시도
-            if (!hasNovels) {
-                var cloudTree = await loadTreeFromSupabase();
-                if (cloudTree && cloudTree.length > 0) {
-                    tree.length = 0;
-                    cloudTree.forEach(function (n) { tree.push(n); });
-                    if (!tree.find(function (n) { return n.id === '_all'; })) {
-                        tree.unshift(JSON.parse(JSON.stringify(DEFAULT_CATEGORY)));
-                    }
-                    // 복원된 트리의 ID 재수집
-                    existingIds = {};
-                    collectIds(tree);
-                    hasNovels = Object.keys(existingIds).length > 0;
+            // 1. Supabase에서 클라우드 트리 복원 (항상 시도)
+            var cloudTree = await loadTreeFromSupabase();
+            if (cloudTree && cloudTree.length > 0) {
+                tree.length = 0;
+                cloudTree.forEach(function (n) { tree.push(n); });
+                if (!tree.find(function (n) { return n.id === '_all'; })) {
+                    tree.unshift(JSON.parse(JSON.stringify(DEFAULT_CATEGORY)));
                 }
             }
 
-            // DB의 모든 소설 조회 (트리 데이터 레코드 제외)
+            // 2. DB의 모든 소설 조회 (트리 데이터 레코드 제외)
             var res = await sb.from('novels').select('id, title, subtitle').eq('user_id', uid).neq('title', TREE_RECORD_TITLE).order('created_at', { ascending: true });
-            if (res.error || !res.data || res.data.length === 0) return;
+            if (res.error || !res.data || res.data.length === 0) {
+                saveTree(tree);
+                renderTree(true);
+                return;
+            }
 
-            // 트리에 없는 소설 추가
+            // 3. 트리에 없는 소설 추가 + 기존 노드 부제목 업데이트
+            var existingIds = collectNovelIds(tree);
             var allCat = findNodeById(tree, '_all');
             if (!allCat) { allCat = JSON.parse(JSON.stringify(DEFAULT_CATEGORY)); tree.unshift(allCat); }
 
-            var added = 0;
-            var updated = 0;
             res.data.forEach(function (n) {
                 var nodeId = 'novel_' + n.id;
                 if (!existingIds[nodeId]) {
                     var newNode = { id: nodeId, type: 'memo', name: n.title || '제목 없음' };
                     if (n.subtitle) newNode.subtitle = n.subtitle;
                     allCat.children.push(newNode);
-                    added++;
                 } else {
-                    // 기존 노드에 부제목이 없으면 DB에서 가져와 업데이트
                     var existing = findNodeById(tree, nodeId);
                     if (existing && n.subtitle && !existing.subtitle) {
                         existing.subtitle = n.subtitle;
-                        updated++;
                     }
                 }
             });
 
-            if (added > 0 || updated > 0 || !hasNovels) {
-                saveTree(tree);
-                renderTree(true);
-            }
+            saveTree(tree);
+            renderTree(true);
         } catch (e) { /* 무시 */ }
-    })();
+    }
+
+    // 초기 동기화
+    syncFromSupabase();
+
+    // 페이지 포커스 시 재동기화 (다른 기기/탭에서 변경된 내용 반영)
+    window.addEventListener('focus', syncFromSupabase);
 }
 
 initSidebar();
