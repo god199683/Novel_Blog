@@ -330,86 +330,87 @@
             }
         });
 
-        // ── 시스템 글꼴 불러오기 (Local Font Access API) ──
+        // ── 글꼴 파일 불러오기 (ttf/otf/woff 파일 선택) ──
         (function() {
-            if (!('queryLocalFonts' in window)) return;
             const fontPicker = document.querySelector('.ql-snow .ql-picker.ql-font');
             if (!fontPicker) return;
             const opts = fontPicker.querySelector('.ql-picker-options');
             if (!opts) return;
 
-            // 툴바 첫 번째 줄에 "시스템 글꼴" 버튼 추가
             const toolbar = document.querySelector('.ql-toolbar');
             const loadBtn = document.createElement('button');
             loadBtn.type = 'button';
-            loadBtn.className = 'ql-system-fonts';
-            loadBtn.textContent = '시스템 글꼴';
-            loadBtn.title = 'PC에 설치된 모든 글꼴 불러오기';
+            loadBtn.textContent = '글꼴 추가';
+            loadBtn.title = '폰트 파일(.ttf, .otf, .woff)을 선택하여 추가';
             loadBtn.style.cssText = 'font-size:11px;padding:2px 8px;margin-left:4px;border:1px solid #c0daf0;border-radius:4px;background:#f0f8ff;color:#2196F3;cursor:pointer;vertical-align:middle;line-height:22px;white-space:nowrap;height:auto;width:auto;float:none;display:inline-block;';
-            // 글꼴 드롭다운 바로 뒤에 삽입
             const fontGroup = fontPicker.closest('.ql-formats');
             if (fontGroup) fontGroup.appendChild(loadBtn);
             else toolbar.appendChild(loadBtn);
 
-            let loaded = false;
-            loadBtn.addEventListener('click', async function(e) {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.ttf,.otf,.woff,.woff2';
+            fileInput.multiple = true;
+            fileInput.style.display = 'none';
+            document.body.appendChild(fileInput);
+
+            loadBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                if (loaded) return;
-                loadBtn.textContent = '로딩...';
-                loadBtn.style.color = '#999';
-                try {
-                    const fonts = await window.queryLocalFonts();
-                    const familySet = new Set();
-                    fonts.forEach(f => familySet.add(f.family));
+                fileInput.click();
+            });
 
-                    const existingValues = new Set(Font.whitelist || []);
-                    const sorted = [...familySet].sort((a, b) => a.localeCompare(b));
-                    const styleEl = document.createElement('style');
-                    let css = '';
-                    let addedCount = 0;
+            const existingValues = new Set(Font.whitelist || []);
+            let addedCount = 0;
 
-                    sorted.forEach(family => {
-                        const slug = family.toLowerCase().replace(/[^a-z0-9\uac00-\ud7a3]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-                        if (!slug || existingValues.has(slug)) return;
+            fileInput.addEventListener('change', function() {
+                const files = this.files;
+                if (!files || files.length === 0) return;
 
+                Array.from(files).forEach(file => {
+                    const name = file.name.replace(/\.(ttf|otf|woff2?|TTF|OTF|WOFF2?)$/, '');
+                    const familyName = name.replace(/[-_]/g, ' ');
+                    const slug = name.toLowerCase().replace(/[^a-z0-9\uac00-\ud7a3]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+                    if (!slug || existingValues.has(slug)) return;
+
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const url = e.target.result;
+
+                        // @font-face + Quill 스타일 추가
+                        const styleEl = document.createElement('style');
+                        const esc = familyName.replace(/'/g, "\\'");
+                        styleEl.textContent =
+                            `@font-face { font-family: '${esc}'; src: url('${url}'); font-display: swap; }\n` +
+                            `.ql-font-${CSS.escape(slug)} { font-family: '${esc}', sans-serif; }\n` +
+                            `.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="${slug}"]::before,\n` +
+                            `.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="${slug}"]::before { content: '${esc}'; font-family: '${esc}', sans-serif; }\n`;
+                        document.head.appendChild(styleEl);
+
+                        // Quill whitelist 등록
                         Font.whitelist.push(slug);
                         existingValues.add(slug);
 
-                        const escapedFamily = family.replace(/'/g, "\\'");
-                        css += `.ql-font-${CSS.escape(slug)} { font-family: '${escapedFamily}', sans-serif; }\n`;
-                        css += `.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="${slug}"]::before,\n`;
-                        css += `.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="${slug}"]::before { content: '${escapedFamily}'; font-family: '${escapedFamily}', sans-serif; }\n`;
-
+                        // 드롭다운 항목 추가
                         const item = document.createElement('span');
                         item.className = 'ql-picker-item';
                         item.setAttribute('data-value', slug);
                         item.addEventListener('click', function() {
-                            const label = fontPicker.querySelector('.ql-picker-label');
-                            label.setAttribute('data-value', slug);
+                            fontPicker.querySelector('.ql-picker-label').setAttribute('data-value', slug);
                             fontPicker.classList.remove('ql-expanded');
                             const range = quill.getSelection();
-                            if (range && range.length > 0) {
-                                quill.formatText(range.index, range.length, 'font', slug);
-                            } else if (range) {
-                                quill.format('font', slug);
-                            }
+                            if (range && range.length > 0) quill.formatText(range.index, range.length, 'font', slug);
+                            else if (range) quill.format('font', slug);
                         });
                         opts.appendChild(item);
+
                         addedCount++;
-                    });
-
-                    styleEl.textContent = css;
-                    document.head.appendChild(styleEl);
-
-                    loaded = true;
-                    loadBtn.textContent = addedCount + '개 추가됨';
-                    loadBtn.style.color = '#4CAF50';
-                    loadBtn.style.borderColor = '#4CAF50';
-                } catch (err) {
-                    loadBtn.textContent = '권한 거부';
-                    loadBtn.style.color = '#f44336';
-                    loadBtn.style.borderColor = '#f44336';
-                }
+                        loadBtn.textContent = '글꼴 추가 (+' + addedCount + ')';
+                        loadBtn.style.color = '#4CAF50';
+                        loadBtn.style.borderColor = '#4CAF50';
+                    };
+                    reader.readAsDataURL(file);
+                });
+                this.value = '';
             });
         })();
 
