@@ -50,7 +50,6 @@
             <a href="manage.html" class="page-nav-item">관리</a>
             <a href="translate.html" class="page-nav-item">DeepL</a>
             <a href="translate-free.html" class="page-nav-item active">무료 번역</a>
-            <a href="translate-pro.html" class="page-nav-item">프로 번역</a>
         </nav>
         <section class="translate-section">
             <div class="translate-toolbar">
@@ -221,7 +220,7 @@
             try {
                 // 5000자 단위로 분할
                 const chunks = [];
-                const maxLen = 4500;
+                const maxLen = 1500;
                 let remaining = text;
                 while (remaining.length > 0) {
                     if (remaining.length <= maxLen) {
