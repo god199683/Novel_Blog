@@ -259,7 +259,12 @@ function initSidebar() {
         });
         movable.sort(function (a, b) {
             var cmp = a.name.localeCompare(b.name);
-            if (cmp === 0) cmp = (a.subtitle || '').localeCompare(b.subtitle || '');
+            if (cmp === 0) {
+                var sa = a.subtitle || '', sb2 = b.subtitle || '';
+                var na = parseFloat(sa.replace(/[^0-9.]/g, '')) || 0;
+                var nb = parseFloat(sb2.replace(/[^0-9.]/g, '')) || 0;
+                cmp = (na !== nb) ? na - nb : sa.localeCompare(sb2);
+            }
             return cmp * dir;
         });
         var mi = 0;
