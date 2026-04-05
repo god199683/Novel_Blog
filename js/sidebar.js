@@ -1098,7 +1098,27 @@ function initSidebar() {
     renderTree(true);
 
     // Supabase 동기화 함수
-    function collectNovelIds(nodes) {
+
+    // 트리 내 중복 소설 ID 제거 (첫 번째만 유지)
+    function deduplicateTree(nodes) {
+        var seen = {};
+        function walk(list) {
+            for (var i = list.length - 1; i >= 0; i--) {
+                var n = list[i];
+                if (n.id && n.id.indexOf('novel_') === 0) {
+                    if (seen[n.id]) {
+                        list.splice(i, 1);
+                    } else {
+                        seen[n.id] = true;
+                    }
+                }
+                if (n.children) walk(n.children);
+            }
+        }
+        walk(nodes);
+    }
+
+    function getExistingNovelIds(nodes) {
         var ids = {};
         (function walk(list) {
             list.forEach(function (n) {
@@ -1116,7 +1136,7 @@ function initSidebar() {
             var uid = sess.data.session ? sess.data.session.user.id : null;
             if (!uid) return;
 
-            // 1. Supabase에서 클라우드 트리 복원 (항상 시도)
+            // 1. Supabase에서 클라우드 트리 복원 (항상 우선)
             var cloudTree = await loadTreeFromSupabase();
             if (cloudTree && cloudTree.length > 0) {
                 tree.length = 0;
@@ -1126,7 +1146,10 @@ function initSidebar() {
                 }
             }
 
-            // 2. DB의 모든 소설 조회 (트리 데이터 레코드 제외)
+            // 2. 중복 제거
+            deduplicateTree(tree);
+
+            // 3. DB의 모든 소설 조회 (트리 데이터 레코드 제외)
             var res = await sb.from('novels').select('id, title, subtitle').eq('user_id', uid).neq('title', TREE_RECORD_TITLE).order('created_at', { ascending: true });
             if (res.error || !res.data || res.data.length === 0) {
                 saveTree(tree);
@@ -1134,8 +1157,8 @@ function initSidebar() {
                 return;
             }
 
-            // 3. 트리에 없는 소설 추가 + 기존 노드 부제목 업데이트
-            var existingIds = collectNovelIds(tree);
+            // 4. 트리에 없는 소설 추가 + 기존 노드 부제목 업데이트
+            var existingIds = getExistingNovelIds(tree);
             var allCat = findNodeById(tree, '_all');
             if (!allCat) { allCat = JSON.parse(JSON.stringify(DEFAULT_CATEGORY)); tree.unshift(allCat); }
 
@@ -1155,11 +1178,18 @@ function initSidebar() {
 
             saveTree(tree);
             renderTree(true);
-        } catch (e) { /* 무시 */ }
+        } catch (e) { console.warn('sidebar sync error:', e); }
     }
 
-    // 초기 동기화
+    // 초기 동기화: 인증 상태 변경 시에도 동기화
     syncFromSupabase();
+    if (window.sb) {
+        sb.auth.onAuthStateChange(function (event) {
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                syncFromSupabase();
+            }
+        });
+    }
 
     // 페이지 포커스 시 재동기화 (다른 기기/탭에서 변경된 내용 반영)
     window.addEventListener('focus', syncFromSupabase);
