@@ -330,6 +330,81 @@
             }
         });
 
+        // ── 시스템 글꼴 불러오기 (Local Font Access API) ──
+        (function() {
+            if (!('queryLocalFonts' in window)) return;
+            const fontPicker = document.querySelector('.ql-snow .ql-picker.ql-font');
+            if (!fontPicker) return;
+            const opts = fontPicker.querySelector('.ql-picker-options');
+            if (!opts) return;
+
+            // "시스템 글꼴 불러오기" 버튼 추가
+            const loadBtn = document.createElement('span');
+            loadBtn.className = 'ql-picker-item';
+            loadBtn.style.cssText = 'color:#2196F3;font-weight:600;font-size:12px;text-align:center;border-top:1px solid #d0e3f2;padding:6px 0;cursor:pointer;';
+            loadBtn.textContent = '📁 시스템 글꼴 불러오기';
+            loadBtn.setAttribute('data-value', '__load_system__');
+            opts.appendChild(loadBtn);
+
+            let loaded = false;
+            loadBtn.addEventListener('mousedown', async function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (loaded) return;
+                try {
+                    const fonts = await window.queryLocalFonts();
+                    const familySet = new Set();
+                    fonts.forEach(f => familySet.add(f.family));
+
+                    const existingValues = new Set(Font.whitelist || []);
+                    const sorted = [...familySet].sort((a, b) => a.localeCompare(b));
+                    const styleEl = document.createElement('style');
+                    let css = '';
+
+                    sorted.forEach(family => {
+                        const slug = family.toLowerCase().replace(/[^a-z0-9가-힣]/g, '-').replace(/-+/g, '-');
+                        if (existingValues.has(slug)) return;
+
+                        // Quill whitelist에 추가
+                        Font.whitelist.push(slug);
+                        existingValues.add(slug);
+
+                        // CSS 규칙 추가
+                        css += `.ql-font-${slug} { font-family: '${family}', sans-serif; }\n`;
+                        css += `.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="${slug}"]::before,\n`;
+                        css += `.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="${slug}"]::before { content: '${family}'; font-family: '${family}', sans-serif; }\n`;
+
+                        // 드롭다운 항목 추가
+                        const item = document.createElement('span');
+                        item.className = 'ql-picker-item';
+                        item.setAttribute('data-value', slug);
+                        item.addEventListener('click', function() {
+                            const label = fontPicker.querySelector('.ql-picker-label');
+                            label.setAttribute('data-value', slug);
+                            fontPicker.classList.remove('ql-expanded');
+                            const range = quill.getSelection();
+                            if (range && range.length > 0) {
+                                quill.formatText(range.index, range.length, 'font', slug);
+                            } else if (range) {
+                                quill.format('font', slug);
+                            }
+                        });
+                        opts.insertBefore(item, loadBtn);
+                    });
+
+                    styleEl.textContent = css;
+                    document.head.appendChild(styleEl);
+
+                    loaded = true;
+                    loadBtn.textContent = '✅ ' + sorted.length + '개 글꼴 로드 완료';
+                    loadBtn.style.color = '#4CAF50';
+                } catch (err) {
+                    loadBtn.textContent = '⚠️ 권한이 거부되었습니다';
+                    loadBtn.style.color = '#f44336';
+                }
+            });
+        })();
+
         const charCount = document.getElementById('char-count');
 
         // 글자 수 (디바운스)
