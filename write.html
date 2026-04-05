@@ -215,7 +215,30 @@
 
         // ── Quill 모듈 등록 ──
         const Font = Quill.import('attributors/class/font');
-        Font.whitelist = ['malgun-gothic', 'noto-sans-kr', 'nanum-gothic', 'nanum-myeongjo', 'batang', 'dotum', 'gulim', 'gungsuh', 'georgia', 'arial', 'times-new-roman', 'segoe-ui', 'verdana', 'tahoma', 'trebuchet-ms', 'courier-new', 'consolas', 'monospace', 'impact', 'comic-sans'];
+        const _basefonts = ['malgun-gothic', 'noto-sans-kr', 'nanum-gothic', 'nanum-myeongjo', 'batang', 'dotum', 'gulim', 'gungsuh', 'georgia', 'arial', 'times-new-roman', 'segoe-ui', 'verdana', 'tahoma', 'trebuchet-ms', 'courier-new', 'consolas', 'monospace', 'impact', 'comic-sans'];
+
+        // 저장된 커스텀 글꼴 복원
+        const _CUSTOM_FONTS_KEY = 'custom-fonts';
+        let _customFonts = [];
+        try { _customFonts = JSON.parse(localStorage.getItem(_CUSTOM_FONTS_KEY)) || []; } catch(e) {}
+
+        // 커스텀 글꼴 CSS + @font-face 즉시 적용
+        if (_customFonts.length > 0) {
+            const styleEl = document.createElement('style');
+            let css = '';
+            _customFonts.forEach(f => {
+                const esc = f.family.replace(/'/g, "\\'");
+                css += `@font-face { font-family: '${esc}'; src: url('${f.dataUrl}'); font-display: swap; }\n`;
+                css += `.ql-font-${CSS.escape(f.slug)} { font-family: '${esc}', sans-serif; }\n`;
+                css += `.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="${f.slug}"]::before,\n`;
+                css += `.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="${f.slug}"]::before { content: '${esc}'; font-family: '${esc}', sans-serif; }\n`;
+            });
+            styleEl.textContent = css;
+            document.head.appendChild(styleEl);
+        }
+
+        // whitelist = 기본 + 커스텀 slug
+        Font.whitelist = _basefonts.concat(_customFonts.map(f => f.slug));
         Quill.register(Font, true);
 
         const Size = Quill.import('attributors/style/size');
@@ -248,7 +271,7 @@
         const toolbarOptions = {
             container: [
                 [{ 'header': [1, 2, 3, 4, false] }],
-                [{ 'font': ['', 'malgun-gothic', 'noto-sans-kr', 'nanum-gothic', 'nanum-myeongjo', 'batang', 'dotum', 'gulim', 'gungsuh', 'georgia', 'arial', 'times-new-roman', 'segoe-ui', 'verdana', 'tahoma', 'trebuchet-ms', 'courier-new', 'consolas', 'monospace', 'impact', 'comic-sans'] }],
+                [{ 'font': [''].concat(_basefonts).concat(_customFonts.map(f => f.slug)) }],
                 [{ 'size': ['9pt', '10pt', '11pt', false, '14pt', '16pt', '18pt', '20pt', '24pt', '28pt', '36pt', '48pt'] }],
                 ['bold', 'italic', 'underline', 'strike'],
                 [{ 'color': [] }, { 'background': [] }],
@@ -330,7 +353,7 @@
             }
         });
 
-        // ── 글꼴 파일 불러오기 (ttf/otf/woff 파일 선택) ──
+        // ── 글꼴 파일 불러오기 (ttf/otf/woff 파일 선택, localStorage 영속) ──
         (function() {
             const fontPicker = document.querySelector('.ql-snow .ql-picker.ql-font');
             if (!fontPicker) return;
@@ -359,28 +382,61 @@
                 fileInput.click();
             });
 
+            // 드롭다운 항목을 Quill 네이티브 방식으로 추가
+            function addFontToDropdown(slug) {
+                const item = document.createElement('span');
+                item.tabIndex = 0;
+                item.setAttribute('role', 'button');
+                item.className = 'ql-picker-item';
+                item.setAttribute('data-value', slug);
+                item.addEventListener('click', function() {
+                    // Quill picker 레이블 업데이트
+                    const label = fontPicker.querySelector('.ql-picker-label');
+                    label.setAttribute('data-value', slug);
+                    fontPicker.classList.remove('ql-expanded');
+                    // 에디터에 글꼴 적용
+                    quill.focus();
+                    const range = quill.getSelection(true);
+                    if (range && range.length > 0) {
+                        quill.formatText(range.index, range.length, 'font', slug, Quill.sources.USER);
+                    } else {
+                        quill.format('font', slug, Quill.sources.USER);
+                    }
+                });
+                opts.appendChild(item);
+            }
+
+            // 이미 저장된 커스텀 글꼴들의 드롭다운 항목 추가
+            _customFonts.forEach(f => addFontToDropdown(f.slug));
+
+            if (_customFonts.length > 0) {
+                loadBtn.textContent = '글꼴 추가 (+' + _customFonts.length + ')';
+                loadBtn.style.color = '#4CAF50';
+                loadBtn.style.borderColor = '#4CAF50';
+            }
+
             const existingValues = new Set(Font.whitelist || []);
-            let addedCount = 0;
 
             fileInput.addEventListener('change', function() {
                 const files = this.files;
                 if (!files || files.length === 0) return;
+                let pending = files.length;
 
                 Array.from(files).forEach(file => {
-                    const name = file.name.replace(/\.(ttf|otf|woff2?|TTF|OTF|WOFF2?)$/, '');
+                    const name = file.name.replace(/\.(ttf|otf|woff2?|TTF|OTF|WOFF2?)$/i, '');
                     const familyName = name.replace(/[-_]/g, ' ');
                     const slug = name.toLowerCase().replace(/[^a-z0-9\uac00-\ud7a3]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-                    if (!slug || existingValues.has(slug)) return;
+                    if (!slug || existingValues.has(slug)) { pending--; return; }
 
                     const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const url = e.target.result;
-
-                        // @font-face + Quill 스타일 추가
-                        const styleEl = document.createElement('style');
+                    reader.onload = function(ev) {
+                        const dataUrl = ev.target.result;
                         const esc = familyName.replace(/'/g, "\\'");
+
+                        // @font-face + CSS 추가
+                        const styleEl = document.createElement('style');
                         styleEl.textContent =
-                            `@font-face { font-family: '${esc}'; src: url('${url}'); font-display: swap; }\n` +
+                            `@font-face { font-family: '${esc}'; src: url('${dataUrl}'); font-display: swap; }\n` +
                             `.ql-font-${CSS.escape(slug)} { font-family: '${esc}', sans-serif; }\n` +
                             `.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="${slug}"]::before,\n` +
                             `.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="${slug}"]::before { content: '${esc}'; font-family: '${esc}', sans-serif; }\n`;
@@ -391,20 +447,13 @@
                         existingValues.add(slug);
 
                         // 드롭다운 항목 추가
-                        const item = document.createElement('span');
-                        item.className = 'ql-picker-item';
-                        item.setAttribute('data-value', slug);
-                        item.addEventListener('click', function() {
-                            fontPicker.querySelector('.ql-picker-label').setAttribute('data-value', slug);
-                            fontPicker.classList.remove('ql-expanded');
-                            const range = quill.getSelection();
-                            if (range && range.length > 0) quill.formatText(range.index, range.length, 'font', slug);
-                            else if (range) quill.format('font', slug);
-                        });
-                        opts.appendChild(item);
+                        addFontToDropdown(slug);
 
-                        addedCount++;
-                        loadBtn.textContent = '글꼴 추가 (+' + addedCount + ')';
+                        // localStorage에 저장
+                        _customFonts.push({ slug, family: familyName, dataUrl });
+                        try { localStorage.setItem(_CUSTOM_FONTS_KEY, JSON.stringify(_customFonts)); } catch(e) {}
+
+                        loadBtn.textContent = '글꼴 추가 (+' + _customFonts.length + ')';
                         loadBtn.style.color = '#4CAF50';
                         loadBtn.style.borderColor = '#4CAF50';
                     };
