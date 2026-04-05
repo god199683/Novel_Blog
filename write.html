@@ -40,6 +40,18 @@
         .ql-font-monospace { font-family: monospace; }
         .ql-font-arial { font-family: Arial, Helvetica, sans-serif; }
         .ql-font-times-new-roman { font-family: 'Times New Roman', Times, serif; }
+        .ql-font-batang { font-family: 'Batang', '바탕', serif; }
+        .ql-font-dotum { font-family: 'Dotum', '돋움', sans-serif; }
+        .ql-font-gulim { font-family: 'Gulim', '굴림', sans-serif; }
+        .ql-font-gungsuh { font-family: 'Gungsuh', '궁서', serif; }
+        .ql-font-segoe-ui { font-family: 'Segoe UI', sans-serif; }
+        .ql-font-verdana { font-family: Verdana, Geneva, sans-serif; }
+        .ql-font-tahoma { font-family: Tahoma, Geneva, sans-serif; }
+        .ql-font-trebuchet-ms { font-family: 'Trebuchet MS', Helvetica, sans-serif; }
+        .ql-font-courier-new { font-family: 'Courier New', Courier, monospace; }
+        .ql-font-impact { font-family: Impact, 'Arial Black', sans-serif; }
+        .ql-font-comic-sans { font-family: 'Comic Sans MS', cursive; }
+        .ql-font-consolas { font-family: Consolas, 'Courier New', monospace; }
 
         /* 글씨체 드롭다운 레이블 */
         .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="malgun-gothic"]::before,
@@ -58,6 +70,37 @@
         .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="arial"]::before { content: 'Arial'; font-family: Arial, sans-serif; }
         .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="times-new-roman"]::before,
         .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="times-new-roman"]::before { content: 'Times New Roman'; font-family: 'Times New Roman', serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="batang"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="batang"]::before { content: '바탕'; font-family: 'Batang', serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="dotum"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="dotum"]::before { content: '돋움'; font-family: 'Dotum', sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="gulim"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="gulim"]::before { content: '굴림'; font-family: 'Gulim', sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="gungsuh"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="gungsuh"]::before { content: '궁서'; font-family: 'Gungsuh', serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="segoe-ui"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="segoe-ui"]::before { content: 'Segoe UI'; font-family: 'Segoe UI', sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="verdana"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="verdana"]::before { content: 'Verdana'; font-family: Verdana, sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="tahoma"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="tahoma"]::before { content: 'Tahoma'; font-family: Tahoma, sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="trebuchet-ms"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="trebuchet-ms"]::before { content: 'Trebuchet MS'; font-family: 'Trebuchet MS', sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="courier-new"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="courier-new"]::before { content: 'Courier New'; font-family: 'Courier New', monospace; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="impact"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="impact"]::before { content: 'Impact'; font-family: Impact, sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="comic-sans"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="comic-sans"]::before { content: 'Comic Sans'; font-family: 'Comic Sans MS', cursive; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="consolas"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="consolas"]::before { content: 'Consolas'; font-family: Consolas, monospace; }
+
+        /* 글씨체/크기 드롭다운 스크롤 */
+        .ql-snow .ql-picker.ql-font .ql-picker-options,
+        .ql-snow .ql-picker.ql-size .ql-picker-options {
+            max-height: 250px;
+            overflow-y: auto;
+        }
 
         /* 글씨 크기 드롭다운 */
         .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="9pt"]::before,
@@ -172,7 +215,7 @@
 
         // ── Quill 모듈 등록 ──
         const Font = Quill.import('attributors/class/font');
-        Font.whitelist = ['malgun-gothic', 'noto-sans-kr', 'nanum-gothic', 'nanum-myeongjo', 'georgia', 'monospace', 'arial', 'times-new-roman'];
+        Font.whitelist = ['malgun-gothic', 'noto-sans-kr', 'nanum-gothic', 'nanum-myeongjo', 'batang', 'dotum', 'gulim', 'gungsuh', 'georgia', 'arial', 'times-new-roman', 'segoe-ui', 'verdana', 'tahoma', 'trebuchet-ms', 'courier-new', 'consolas', 'monospace', 'impact', 'comic-sans'];
         Quill.register(Font, true);
 
         const Size = Quill.import('attributors/style/size');
@@ -205,7 +248,7 @@
         const toolbarOptions = {
             container: [
                 [{ 'header': [1, 2, 3, 4, false] }],
-                [{ 'font': ['', 'malgun-gothic', 'noto-sans-kr', 'nanum-gothic', 'nanum-myeongjo', 'georgia', 'monospace', 'arial', 'times-new-roman'] }],
+                [{ 'font': ['', 'malgun-gothic', 'noto-sans-kr', 'nanum-gothic', 'nanum-myeongjo', 'batang', 'dotum', 'gulim', 'gungsuh', 'georgia', 'arial', 'times-new-roman', 'segoe-ui', 'verdana', 'tahoma', 'trebuchet-ms', 'courier-new', 'consolas', 'monospace', 'impact', 'comic-sans'] }],
                 [{ 'size': ['9pt', '10pt', '11pt', false, '14pt', '16pt', '18pt', '20pt', '24pt', '28pt', '36pt', '48pt'] }],
                 ['bold', 'italic', 'underline', 'strike'],
                 [{ 'color': [] }, { 'background': [] }],
