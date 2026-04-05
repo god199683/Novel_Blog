@@ -257,7 +257,11 @@ function initSidebar() {
             if (n.fixed) fixedIndices.push(i);
             else movable.push(n);
         });
-        movable.sort(function (a, b) { return a.name.localeCompare(b.name) * dir; });
+        movable.sort(function (a, b) {
+            var cmp = a.name.localeCompare(b.name);
+            if (cmp === 0) cmp = (a.subtitle || '').localeCompare(b.subtitle || '');
+            return cmp * dir;
+        });
         var mi = 0;
         for (var i = 0; i < nodes.length; i++) {
             if (fixedIndices.indexOf(i) === -1) {
