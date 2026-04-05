@@ -1129,6 +1129,34 @@ function initSidebar() {
         return ids;
     }
 
+    // 두 트리를 병합: cloud 기반 + local에만 있는 카테고리/폴더 보존
+    function mergeTrees(cloudTree, localTree) {
+        var merged = JSON.parse(JSON.stringify(cloudTree));
+        // 클라우드에 존재하는 최상위 노드 ID 수집
+        var cloudIds = {};
+        merged.forEach(function (n) { if (n.id) cloudIds[n.id] = true; });
+        // 로컬에만 있는 최상위 카테고리/폴더를 병합
+        localTree.forEach(function (n) {
+            if (n.id && !cloudIds[n.id] && n.type !== 'memo') {
+                merged.push(JSON.parse(JSON.stringify(n)));
+            }
+        });
+        // 클라우드의 각 카테고리 내부에도 로컬 서브 카테고리/폴더 병합
+        merged.forEach(function (cloudNode) {
+            if (!cloudNode.children) return;
+            var localNode = localTree.find(function (l) { return l.id === cloudNode.id; });
+            if (!localNode || !localNode.children) return;
+            var cloudChildIds = {};
+            cloudNode.children.forEach(function (c) { if (c.id) cloudChildIds[c.id] = true; });
+            localNode.children.forEach(function (c) {
+                if (c.id && !cloudChildIds[c.id] && c.type !== 'memo') {
+                    cloudNode.children.push(JSON.parse(JSON.stringify(c)));
+                }
+            });
+        });
+        return merged;
+    }
+
     async function syncFromSupabase() {
         if (!window.sb) return;
         try {
@@ -1136,11 +1164,14 @@ function initSidebar() {
             var uid = sess.data.session ? sess.data.session.user.id : null;
             if (!uid) return;
 
-            // 1. Supabase에서 클라우드 트리 복원 (항상 우선)
+            // 1. Supabase에서 클라우드 트리 로드
             var cloudTree = await loadTreeFromSupabase();
             if (cloudTree && cloudTree.length > 0) {
+                // 로컬 트리와 병합 (카테고리/폴더 보존)
+                var localCopy = JSON.parse(JSON.stringify(tree));
+                var merged = mergeTrees(cloudTree, localCopy);
                 tree.length = 0;
-                cloudTree.forEach(function (n) { tree.push(n); });
+                merged.forEach(function (n) { tree.push(n); });
                 if (!tree.find(function (n) { return n.id === '_all'; })) {
                     tree.unshift(JSON.parse(JSON.stringify(DEFAULT_CATEGORY)));
                 }
