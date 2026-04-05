@@ -1181,14 +1181,22 @@ function initSidebar() {
         } catch (e) { console.warn('sidebar sync error:', e); }
     }
 
-    // 초기 동기화: 인증 상태 변경 시에도 동기화
-    syncFromSupabase();
+    // 초기 동기화: 인증 세션 준비 후 실행
+    var _synced = false;
     if (window.sb) {
-        sb.auth.onAuthStateChange(function (event) {
+        sb.auth.onAuthStateChange(function (event, session) {
+            if (session && !_synced) {
+                _synced = true;
+                syncFromSupabase();
+            }
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
                 syncFromSupabase();
             }
         });
+        // onAuthStateChange가 이미 발생한 경우 대비 (fallback)
+        setTimeout(function () {
+            if (!_synced) { _synced = true; syncFromSupabase(); }
+        }, 1500);
     }
 
     // 페이지 포커스 시 재동기화 (다른 기기/탭에서 변경된 내용 반영)
