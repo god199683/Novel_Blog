@@ -218,25 +218,84 @@
         const Font = Quill.import('attributors/class/font');
         const _basefonts = ['malgun-gothic', 'noto-sans-kr', 'nanum-gothic', 'nanum-myeongjo', 'batang', 'dotum', 'gulim', 'gungsuh', 'georgia', 'arial', 'times-new-roman', 'segoe-ui', 'verdana', 'tahoma', 'trebuchet-ms', 'courier-new', 'consolas', 'monospace', 'impact', 'comic-sans'];
 
-        // 저장된 커스텀 글꼴 복원
-        const _CUSTOM_FONTS_KEY = 'custom-fonts';
-        let _customFonts = [];
-        try { _customFonts = JSON.parse(localStorage.getItem(_CUSTOM_FONTS_KEY)) || []; } catch(e) {}
-
-        // 커스텀 글꼴 CSS + @font-face 즉시 적용
-        if (_customFonts.length > 0) {
-            const styleEl = document.createElement('style');
-            let css = '';
-            _customFonts.forEach(f => {
-                const esc = f.family.replace(/'/g, "\\'");
-                css += `@font-face { font-family: '${esc}'; src: url('${f.dataUrl}'); font-display: swap; }\n`;
-                css += `.ql-font-${CSS.escape(f.slug)} { font-family: '${esc}', sans-serif; }\n`;
-                css += `.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="${f.slug}"]::before,\n`;
-                css += `.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="${f.slug}"]::before { content: '${esc}'; font-family: '${esc}', sans-serif; }\n`;
+        // ── IndexedDB 폰트 저장소 ──
+        const _FONT_DB_NAME = 'novel-blog-fonts';
+        const _FONT_STORE = 'fonts';
+        function _openFontDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(_FONT_DB_NAME, 1);
+                req.onupgradeneeded = () => req.result.createObjectStore(_FONT_STORE, { keyPath: 'slug' });
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
             });
-            styleEl.textContent = css;
+        }
+        async function _getAllFonts() {
+            const db = await _openFontDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(_FONT_STORE, 'readonly');
+                const req = tx.objectStore(_FONT_STORE).getAll();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = () => reject(req.error);
+            });
+        }
+        async function _saveFont(fontData) {
+            const db = await _openFontDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(_FONT_STORE, 'readwrite');
+                tx.objectStore(_FONT_STORE).put(fontData);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        // localStorage → IndexedDB 마이그레이션 (한번만)
+        let _customFonts = [];
+        const _CUSTOM_FONTS_KEY = 'custom-fonts';
+        let _migrated = false;
+        try {
+            const old = JSON.parse(localStorage.getItem(_CUSTOM_FONTS_KEY));
+            if (old && old.length > 0) {
+                _customFonts = old.map(f => ({ slug: f.slug, family: f.family }));
+                _migrated = true;
+            }
+        } catch(e) {}
+
+        // 폰트 CSS 적용 (Blob URL 사용)
+        function _applyFontCSS(slug, family, blobUrl) {
+            const esc = family.replace(/'/g, "\\'");
+            const styleEl = document.createElement('style');
+            styleEl.textContent =
+                `@font-face { font-family: '${esc}'; src: url('${blobUrl}'); font-display: swap; }\n` +
+                `.ql-font-${CSS.escape(slug)} { font-family: '${esc}', sans-serif; }\n` +
+                `.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="${slug}"]::before,\n` +
+                `.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="${slug}"]::before { content: '${esc}'; font-family: '${esc}', sans-serif; }\n`;
             document.head.appendChild(styleEl);
         }
+
+        // 비동기로 폰트 로드 (Quill 초기화를 차단하지 않음)
+        (async function _loadCustomFonts() {
+            try {
+                if (_migrated) {
+                    // localStorage에서 IndexedDB로 마이그레이션
+                    const old = JSON.parse(localStorage.getItem(_CUSTOM_FONTS_KEY));
+                    for (const f of old) {
+                        const res = await fetch(f.dataUrl);
+                        const blob = await res.blob();
+                        await _saveFont({ slug: f.slug, family: f.family, blob });
+                        _applyFontCSS(f.slug, f.family, URL.createObjectURL(blob));
+                    }
+                    localStorage.removeItem(_CUSTOM_FONTS_KEY);
+                } else {
+                    const fonts = await _getAllFonts();
+                    _customFonts = fonts.map(f => ({ slug: f.slug, family: f.family }));
+                    fonts.forEach(f => {
+                        _applyFontCSS(f.slug, f.family, URL.createObjectURL(f.blob));
+                    });
+                }
+                // 드롭다운 갱신
+                if (typeof _refreshFontDropdown === 'function') _refreshFontDropdown();
+            } catch(e) { console.warn('Font load error:', e); }
+        })();
 
         // whitelist = 기본 + 커스텀 slug
         Font.whitelist = _basefonts.concat(_customFonts.map(f => f.slug));
@@ -409,6 +468,25 @@
 
             // 이미 저장된 커스텀 글꼴들의 드롭다운 항목 추가
             _customFonts.forEach(f => addFontToDropdown(f.slug));
+            // 비동기 로드 후 드롭다운 갱신 콜백
+            window._refreshFontDropdown = async function() {
+                try {
+                    const fonts = await _getAllFonts();
+                    fonts.forEach(f => {
+                        if (!existingValues.has(f.slug)) {
+                            Font.whitelist.push(f.slug);
+                            existingValues.add(f.slug);
+                            addFontToDropdown(f.slug);
+                        }
+                    });
+                    _customFonts = fonts.map(f => ({ slug: f.slug, family: f.family }));
+                    if (_customFonts.length > 0) {
+                        loadBtn.textContent = '글꼴 추가 (+' + _customFonts.length + ')';
+                        loadBtn.style.color = '#4CAF50';
+                        loadBtn.style.borderColor = '#4CAF50';
+                    }
+                } catch(e) {}
+            };
 
             if (_customFonts.length > 0) {
                 loadBtn.textContent = '글꼴 추가 (+' + _customFonts.length + ')';
@@ -421,44 +499,30 @@
             fileInput.addEventListener('change', function() {
                 const files = this.files;
                 if (!files || files.length === 0) return;
-                let pending = files.length;
 
                 Array.from(files).forEach(file => {
                     const name = file.name.replace(/\.(ttf|otf|woff2?|TTF|OTF|WOFF2?)$/i, '');
                     const familyName = name.replace(/[-_]/g, ' ');
                     const slug = name.toLowerCase().replace(/[^a-z0-9\uac00-\ud7a3]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-                    if (!slug || existingValues.has(slug)) { pending--; return; }
+                    if (!slug || existingValues.has(slug)) return;
 
-                    const reader = new FileReader();
-                    reader.onload = function(ev) {
-                        const dataUrl = ev.target.result;
-                        const esc = familyName.replace(/'/g, "\\'");
+                    // Blob으로 직접 저장 (base64 변환 없음)
+                    const blob = file.slice();
+                    const blobUrl = URL.createObjectURL(blob);
+                    _applyFontCSS(slug, familyName, blobUrl);
 
-                        // @font-face + CSS 추가
-                        const styleEl = document.createElement('style');
-                        styleEl.textContent =
-                            `@font-face { font-family: '${esc}'; src: url('${dataUrl}'); font-display: swap; }\n` +
-                            `.ql-font-${CSS.escape(slug)} { font-family: '${esc}', sans-serif; }\n` +
-                            `.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="${slug}"]::before,\n` +
-                            `.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="${slug}"]::before { content: '${esc}'; font-family: '${esc}', sans-serif; }\n`;
-                        document.head.appendChild(styleEl);
+                    // Quill whitelist 등록
+                    Font.whitelist.push(slug);
+                    existingValues.add(slug);
+                    addFontToDropdown(slug);
 
-                        // Quill whitelist 등록
-                        Font.whitelist.push(slug);
-                        existingValues.add(slug);
+                    // IndexedDB에 저장
+                    _customFonts.push({ slug, family: familyName });
+                    _saveFont({ slug, family: familyName, blob }).catch(e => console.warn('Font save error:', e));
 
-                        // 드롭다운 항목 추가
-                        addFontToDropdown(slug);
-
-                        // localStorage에 저장
-                        _customFonts.push({ slug, family: familyName, dataUrl });
-                        try { localStorage.setItem(_CUSTOM_FONTS_KEY, JSON.stringify(_customFonts)); } catch(e) {}
-
-                        loadBtn.textContent = '글꼴 추가 (+' + _customFonts.length + ')';
-                        loadBtn.style.color = '#4CAF50';
-                        loadBtn.style.borderColor = '#4CAF50';
-                    };
-                    reader.readAsDataURL(file);
+                    loadBtn.textContent = '글꼴 추가 (+' + _customFonts.length + ')';
+                    loadBtn.style.color = '#4CAF50';
+                    loadBtn.style.borderColor = '#4CAF50';
                 });
                 this.value = '';
             });
