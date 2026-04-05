@@ -338,19 +338,25 @@
             const opts = fontPicker.querySelector('.ql-picker-options');
             if (!opts) return;
 
-            // "시스템 글꼴 불러오기" 버튼 추가
-            const loadBtn = document.createElement('span');
-            loadBtn.className = 'ql-picker-item';
-            loadBtn.style.cssText = 'color:#2196F3;font-weight:600;font-size:12px;text-align:center;border-top:1px solid #d0e3f2;padding:6px 0;cursor:pointer;';
-            loadBtn.textContent = '📁 시스템 글꼴 불러오기';
-            loadBtn.setAttribute('data-value', '__load_system__');
-            opts.appendChild(loadBtn);
+            // 툴바 첫 번째 줄에 "시스템 글꼴" 버튼 추가
+            const toolbar = document.querySelector('.ql-toolbar');
+            const loadBtn = document.createElement('button');
+            loadBtn.type = 'button';
+            loadBtn.className = 'ql-system-fonts';
+            loadBtn.textContent = '시스템 글꼴';
+            loadBtn.title = 'PC에 설치된 모든 글꼴 불러오기';
+            loadBtn.style.cssText = 'font-size:11px;padding:2px 8px;margin-left:4px;border:1px solid #c0daf0;border-radius:4px;background:#f0f8ff;color:#2196F3;cursor:pointer;vertical-align:middle;line-height:22px;white-space:nowrap;height:auto;width:auto;float:none;display:inline-block;';
+            // 글꼴 드롭다운 바로 뒤에 삽입
+            const fontGroup = fontPicker.closest('.ql-formats');
+            if (fontGroup) fontGroup.appendChild(loadBtn);
+            else toolbar.appendChild(loadBtn);
 
             let loaded = false;
-            loadBtn.addEventListener('mousedown', async function(e) {
+            loadBtn.addEventListener('click', async function(e) {
                 e.preventDefault();
-                e.stopPropagation();
                 if (loaded) return;
+                loadBtn.textContent = '로딩...';
+                loadBtn.style.color = '#999';
                 try {
                     const fonts = await window.queryLocalFonts();
                     const familySet = new Set();
@@ -360,21 +366,20 @@
                     const sorted = [...familySet].sort((a, b) => a.localeCompare(b));
                     const styleEl = document.createElement('style');
                     let css = '';
+                    let addedCount = 0;
 
                     sorted.forEach(family => {
-                        const slug = family.toLowerCase().replace(/[^a-z0-9가-힣]/g, '-').replace(/-+/g, '-');
-                        if (existingValues.has(slug)) return;
+                        const slug = family.toLowerCase().replace(/[^a-z0-9\uac00-\ud7a3]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+                        if (!slug || existingValues.has(slug)) return;
 
-                        // Quill whitelist에 추가
                         Font.whitelist.push(slug);
                         existingValues.add(slug);
 
-                        // CSS 규칙 추가
-                        css += `.ql-font-${slug} { font-family: '${family}', sans-serif; }\n`;
+                        const escapedFamily = family.replace(/'/g, "\\'");
+                        css += `.ql-font-${CSS.escape(slug)} { font-family: '${escapedFamily}', sans-serif; }\n`;
                         css += `.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="${slug}"]::before,\n`;
-                        css += `.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="${slug}"]::before { content: '${family}'; font-family: '${family}', sans-serif; }\n`;
+                        css += `.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="${slug}"]::before { content: '${escapedFamily}'; font-family: '${escapedFamily}', sans-serif; }\n`;
 
-                        // 드롭다운 항목 추가
                         const item = document.createElement('span');
                         item.className = 'ql-picker-item';
                         item.setAttribute('data-value', slug);
@@ -389,18 +394,21 @@
                                 quill.format('font', slug);
                             }
                         });
-                        opts.insertBefore(item, loadBtn);
+                        opts.appendChild(item);
+                        addedCount++;
                     });
 
                     styleEl.textContent = css;
                     document.head.appendChild(styleEl);
 
                     loaded = true;
-                    loadBtn.textContent = '✅ ' + sorted.length + '개 글꼴 로드 완료';
+                    loadBtn.textContent = addedCount + '개 추가됨';
                     loadBtn.style.color = '#4CAF50';
+                    loadBtn.style.borderColor = '#4CAF50';
                 } catch (err) {
-                    loadBtn.textContent = '⚠️ 권한이 거부되었습니다';
+                    loadBtn.textContent = '권한 거부';
                     loadBtn.style.color = '#f44336';
+                    loadBtn.style.borderColor = '#f44336';
                 }
             });
         })();
