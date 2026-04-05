@@ -20,30 +20,30 @@ function initSidebar() {
     // Supabase 동기화 (novels 테이블의 특수 레코드에 저장)
     var TREE_RECORD_TITLE = '__sidebar_tree__';
     var _saveTimer = null;
+    async function _doSaveTreeToSupabase(treeData) {
+        if (!window.sb) return;
+        try {
+            var sess = await sb.auth.getSession();
+            var uid = sess.data.session ? sess.data.session.user.id : null;
+            if (!uid) return;
+            var treeJson = JSON.stringify(treeData);
+            var existing = await sb.from('novels').select('id').eq('user_id', uid).eq('title', TREE_RECORD_TITLE).single();
+            if (existing.data) {
+                await sb.from('novels').update({ content: treeJson }).eq('id', existing.data.id);
+            } else {
+                await sb.from('novels').insert([{
+                    user_id: uid,
+                    title: TREE_RECORD_TITLE,
+                    content: treeJson,
+                    status: 'draft',
+                    created_at: new Date().toISOString()
+                }]);
+            }
+        } catch (e) { console.warn('saveTree error:', e); }
+    }
     function saveTreeToSupabase(treeData) {
         clearTimeout(_saveTimer);
-        _saveTimer = setTimeout(async function () {
-            if (!window.sb) return;
-            try {
-                var sess = await sb.auth.getSession();
-                var uid = sess.data.session ? sess.data.session.user.id : null;
-                if (!uid) return;
-                var treeJson = JSON.stringify(treeData);
-                // 기존 레코드 찾기
-                var existing = await sb.from('novels').select('id').eq('user_id', uid).eq('title', TREE_RECORD_TITLE).single();
-                if (existing.data) {
-                    await sb.from('novels').update({ content: treeJson }).eq('id', existing.data.id);
-                } else {
-                    await sb.from('novels').insert([{
-                        user_id: uid,
-                        title: TREE_RECORD_TITLE,
-                        content: treeJson,
-                        status: 'system',
-                        created_at: new Date().toISOString()
-                    }]);
-                }
-            } catch (e) { /* 무시 */ }
-        }, 3000);
+        _saveTimer = setTimeout(function () { _doSaveTreeToSupabase(treeData); }, 3000);
     }
 
     async function loadTreeFromSupabase() {
@@ -1207,27 +1207,20 @@ function initSidebar() {
                 }
             });
 
-            saveTree(tree);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tree));
+            _doSaveTreeToSupabase(tree);  // 즉시 저장 (디바운스 없이)
             renderTree(true);
         } catch (e) { console.warn('sidebar sync error:', e); }
     }
 
-    // 초기 동기화: 인증 세션 준비 후 실행
-    var _synced = false;
+    // 초기 동기화
+    syncFromSupabase();
     if (window.sb) {
         sb.auth.onAuthStateChange(function (event, session) {
-            if (session && !_synced) {
-                _synced = true;
-                syncFromSupabase();
-            }
-            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
                 syncFromSupabase();
             }
         });
-        // onAuthStateChange가 이미 발생한 경우 대비 (fallback)
-        setTimeout(function () {
-            if (!_synced) { _synced = true; syncFromSupabase(); }
-        }, 1500);
     }
 
     // 페이지 포커스 시 재동기화 (다른 기기/탭에서 변경된 내용 반영)
