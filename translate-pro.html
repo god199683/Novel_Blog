@@ -37,7 +37,7 @@
         .engine-tab .engine-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
         .dot-google { background: #4285f4; }
         .dot-mymemory { background: #e67e22; }
-        .dot-libre { background: #27ae60; }
+        .dot-lingva { background: #27ae60; }
         .dot-best { background: #6c5ce7; }
 
         /* 자동 모드 표시 */
@@ -62,7 +62,6 @@
             <a href="manage.html" class="page-nav-item">관리</a>
             <a href="translate.html" class="page-nav-item">DeepL</a>
             <a href="translate-free.html" class="page-nav-item">무료 번역</a>
-            <a href="translate-multi.html" class="page-nav-item">멀티 번역</a>
             <a href="translate-pro.html" class="page-nav-item active">프로 번역</a>
         </nav>
         <section class="translate-section">
@@ -123,7 +122,7 @@
                         <button class="engine-tab active" data-engine="best"><span class="engine-dot dot-best"></span>최적 번역<span class="auto-badge">AUTO</span></button>
                         <button class="engine-tab" data-engine="google"><span class="engine-dot dot-google"></span>Google</button>
                         <button class="engine-tab" data-engine="mymemory"><span class="engine-dot dot-mymemory"></span>MyMemory</button>
-                        <button class="engine-tab" data-engine="libre"><span class="engine-dot dot-libre"></span>LibreTranslate</button>
+                        <button class="engine-tab" data-engine="lingva"><span class="engine-dot dot-lingva"></span>Lingva</button>
                     </div>
                     <div class="translate-panel-header">
                         <span id="result-engine-label">최적 번역 결과</span>
@@ -164,7 +163,7 @@
         const copyBtn = document.getElementById('copy-btn');
 
         // 엔진별 결과 저장
-        const results = { best: '', google: '', mymemory: '', libre: '' };
+        const results = { best: '', google: '', mymemory: '', lingva: '' };
         let currentTab = 'best';
 
         // 엔진 탭 전환
@@ -173,7 +172,7 @@
                 document.querySelectorAll('.engine-tab').forEach(t => t.classList.remove('active'));
                 this.classList.add('active');
                 currentTab = this.dataset.engine;
-                const labels = { best: '최적 번역 결과', google: 'Google Translate', mymemory: 'MyMemory', libre: 'LibreTranslate' };
+                const labels = { best: '최적 번역 결과', google: 'Google Translate', mymemory: 'MyMemory', lingva: 'Lingva Translate' };
                 resultLabel.textContent = labels[currentTab];
                 if (results[currentTab]) {
                     resultArea.textContent = results[currentTab];
@@ -195,7 +194,7 @@
             sourceCount.textContent = '0자';
             resultArea.textContent = '대기 중...';
             resultArea.className = 'translate-result-area';
-            results.best = results.google = results.mymemory = results.libre = '';
+            results.best = results.google = results.mymemory = results.lingva = '';
             statusEl.textContent = '3개 엔진 자동 비교 후 최적 결과 선택 · API 키 불필요';
             engineInfo.textContent = '';
         });
@@ -278,43 +277,30 @@
             return result;
         }
 
-        // ── LibreTranslate (다중 미러) ──
-        const LIBRE_MIRRORS = [
-            'https://libretranslate.com',
-            'https://translate.argosopentech.com',
-            'https://translate.terraprint.co'
-        ];
-        async function translateLibre(text, src, tgt) {
+        // ── Lingva Translate ──
+        async function translateLingva(text, src, tgt) {
             const srcCode = src === 'zh' ? 'zh' : src;
             const tgtCode = tgt === 'zh' ? 'zh' : tgt;
             const chunks = splitChunks(text, 4500);
             let result = '';
             for (let i = 0; i < chunks.length; i++) {
-                let success = false;
-                for (const mirror of LIBRE_MIRRORS) {
-                    try {
-                        const res = await fetch(mirror + '/translate', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ q: chunks[i], source: srcCode, target: tgtCode, format: 'text' })
-                        });
-                        if (!res.ok) continue;
-                        const data = await res.json();
-                        if (data.translatedText) { result += data.translatedText; success = true; break; }
-                    } catch(e) { continue; }
-                }
-                if (!success) throw new Error('모든 LibreTranslate 서버 연결 실패');
+                const url = 'https://lingva.ml/api/v1/' + encodeURIComponent(srcCode) + '/' + encodeURIComponent(tgtCode) + '/' + encodeURIComponent(chunks[i]);
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                if (data.translation) result += data.translation;
+                else throw new Error('Lingva 번역 실패');
                 if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 200));
             }
             return result;
         }
 
         // ── 최적 결과 선택 (가장 긴 결과 = 가장 풍부한 번역) ──
-        function selectBest(googleResult, mymemoryResult, libreResult) {
+        function selectBest(googleResult, mymemoryResult, lingvaResult) {
             const candidates = [];
             if (googleResult) candidates.push({ engine: 'Google', text: googleResult });
             if (mymemoryResult) candidates.push({ engine: 'MyMemory', text: mymemoryResult });
-            if (libreResult) candidates.push({ engine: 'LibreTranslate', text: libreResult });
+            if (lingvaResult) candidates.push({ engine: 'Lingva', text: lingvaResult });
             if (candidates.length === 0) return { engine: '없음', text: '' };
 
             // 가장 긴 결과 선택 (더 풍부한 번역)
@@ -335,7 +321,7 @@
             resultArea.className = 'translate-result-area loading';
             statusEl.textContent = '3개 엔진에 동시 요청 중...';
             engineInfo.textContent = '';
-            results.google = results.mymemory = results.libre = results.best = '';
+            results.google = results.mymemory = results.lingva = results.best = '';
 
             const srcForGoogle = src === 'zh' ? 'zh-CN' : src;
             const tgtForGoogle = tgt === 'zh' ? 'zh-CN' : tgt;
@@ -346,20 +332,20 @@
             const [gRes, mRes, lRes] = await Promise.allSettled([
                 translateGoogle(text, srcForGoogle, tgtForGoogle),
                 translateMyMemory(text, src, tgt),
-                translateLibre(text, src, tgt)
+                translateLingva(text, src, tgt)
             ]);
 
             const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
             results.google = gRes.status === 'fulfilled' ? gRes.value : '';
             results.mymemory = mRes.status === 'fulfilled' ? mRes.value : '';
-            results.libre = lRes.status === 'fulfilled' ? lRes.value : '';
+            results.lingva = lRes.status === 'fulfilled' ? lRes.value : '';
 
             // 성공/실패 카운트
-            const successCount = [results.google, results.mymemory, results.libre].filter(r => r).length;
+            const successCount = [results.google, results.mymemory, results.lingva].filter(r => r).length;
 
             // 최적 결과 선택
-            const best = selectBest(results.google, results.mymemory, results.libre);
+            const best = selectBest(results.google, results.mymemory, results.lingva);
             results.best = best.text;
 
             // 현재 탭에 맞는 결과 표시
@@ -376,7 +362,7 @@
             const engineStatus = [
                 gRes.status === 'fulfilled' ? 'Google ✓' : 'Google ✗',
                 mRes.status === 'fulfilled' ? 'MyMemory ✓' : 'MyMemory ✗',
-                lRes.status === 'fulfilled' ? 'Libre ✓' : 'Libre ✗'
+                lRes.status === 'fulfilled' ? 'Lingva ✓' : 'Lingva ✗'
             ].join(' · ');
 
             statusEl.textContent = successCount + '/3 엔진 성공 · ' + elapsed + '초 · 최적: ' + best.engine;
