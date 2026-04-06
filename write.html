@@ -423,25 +423,31 @@
                 }
             });
 
-            // 혼합 서식 선택 시 토글 보정: 대부분이 해당 서식이면 제거
+            // 혼합 서식 토글: Quill 기본 handler를 오버라이드
+            const tbModule = quill.getModule('toolbar');
             ['bold', 'italic', 'underline', 'strike'].forEach(fmt => {
-                const btn = toolbar.querySelector('.ql-' + fmt);
-                if (!btn) return;
-                btn.addEventListener('click', function(e) {
+                tbModule.addHandler(fmt, function(value) {
                     const range = quill.getSelection();
-                    if (!range || range.length === 0) return;
+                    if (!range || range.length === 0) {
+                        quill.format(fmt, value, Quill.sources.USER);
+                        return;
+                    }
                     const format = quill.getFormat(range.index, range.length);
-                    // Quill이 혼합 상태로 판단하면 format[fmt]가 undefined
-                    // 이 경우 실제 비율을 확인하여 대부분이면 제거
-                    if (format[fmt] === undefined) {
+                    if (format[fmt]) {
+                        // 전부 해당 서식 → 제거
+                        quill.formatText(range.index, range.length, fmt, false, Quill.sources.USER);
+                    } else if (format[fmt] === undefined) {
+                        // 혼합 상태 → 비율 확인
                         let count = 0;
                         const check = Math.min(range.length, 500);
                         for (let i = 0; i < check; i++) {
                             if (quill.getFormat(range.index + i, 1)[fmt]) count++;
                         }
-                        if (count > check * 0.5) {
-                            quill.formatText(range.index, range.length, fmt, false, Quill.sources.USER);
-                        }
+                        // 과반수면 제거, 아니면 적용
+                        quill.formatText(range.index, range.length, fmt, count <= check * 0.5, Quill.sources.USER);
+                    } else {
+                        // 전부 해당 서식 아님 → 적용
+                        quill.formatText(range.index, range.length, fmt, true, Quill.sources.USER);
                     }
                 });
             });
