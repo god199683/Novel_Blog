@@ -406,12 +406,26 @@
             }
         });
 
-        // 툴바 버튼 클릭 시 에디터 포커스 유지 (더블클릭 방지, 드롭다운은 제외)
-        document.querySelector('.ql-toolbar').addEventListener('mousedown', function(e) {
-            if (e.target.closest('button')) {
+        // 툴바 클릭 시 에디터 선택 유지 — 볼드 등 서식 토글 후 재클릭 가능
+        (function() {
+            let _savedRange = null;
+            const toolbar = document.querySelector('.ql-toolbar');
+
+            toolbar.addEventListener('mousedown', function(e) {
+                // 드롭다운 picker 내부는 제외
+                if (e.target.closest('.ql-picker')) return;
                 e.preventDefault();
-            }
-        });
+                // 현재 선택 저장
+                _savedRange = quill.getSelection();
+            });
+
+            toolbar.addEventListener('click', function(e) {
+                // 버튼 클릭 후 선택이 사라졌으면 복원
+                if (_savedRange && !quill.getSelection()) {
+                    quill.setSelection(_savedRange.index, _savedRange.length, Quill.sources.SILENT);
+                }
+            });
+        })();
 
         // ── 글꼴 파일 불러오기 (ttf/otf/woff 파일 선택, localStorage 영속) ──
         (function() {
