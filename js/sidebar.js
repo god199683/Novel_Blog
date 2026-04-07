@@ -1140,6 +1140,15 @@ function initSidebar() {
 
     // 두 트리를 병합: cloud 기반 + local에만 있는 카테고리/폴더 보존
     function mergeTrees(cloudTree, localTree) {
+        // 로컬 트리의 open 상태를 ID별로 수집
+        var localOpenState = {};
+        (function collectOpen(nodes) {
+            nodes.forEach(function (n) {
+                if (n.id && n.open !== undefined) localOpenState[n.id] = n.open;
+                if (n.children) collectOpen(n.children);
+            });
+        })(localTree);
+
         var merged = JSON.parse(JSON.stringify(cloudTree));
         // 클라우드에 존재하는 최상위 노드 ID 수집
         var cloudIds = {};
@@ -1163,6 +1172,17 @@ function initSidebar() {
                 }
             });
         });
+
+        // 로컬의 open 상태를 병합된 트리에 복원
+        (function restoreOpen(nodes) {
+            nodes.forEach(function (n) {
+                if (n.id && localOpenState.hasOwnProperty(n.id)) {
+                    n.open = localOpenState[n.id];
+                }
+                if (n.children) restoreOpen(n.children);
+            });
+        })(merged);
+
         return merged;
     }
 
