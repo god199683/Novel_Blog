@@ -6,7 +6,7 @@
     <title>소설 도구 | Novel_Blog</title>
     <link rel="stylesheet" href="css/style.css">
     <style>
-        .tools-section { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: calc(100vh - 120px); }
+        .tools-section { display: flex; flex-direction: column; flex: 1; height: calc(100vh - 45px - 38px); overflow: hidden; }
 
         /* 메인 탭 */
         .tools-tabs { display: flex; gap: 0; border-bottom: 1px solid #e8f2fb; background: #f7fbff; flex-shrink: 0; }
@@ -14,7 +14,7 @@
         .tools-tab:hover { color: #3a9ad9; }
         .tools-tab.active { color: #3a9ad9; border-bottom-color: #3a9ad9; font-weight: 700; }
 
-        .tools-body { flex: 1; overflow-y: auto; padding: 24px; }
+        .tools-body { flex: 1; overflow-y: auto; padding: 24px; min-height: 0; }
         .tools-panel { display: none; }
         .tools-panel.active { display: block; }
 
@@ -40,7 +40,7 @@
         .char-val { font-size: 18px; font-weight: bold; color: #2c3e50; }
         .char-idx { font-size: 10px; color: #aaa; margin-top: 4px; }
         .cut-line { width: 2px; height: 80px; background: #fab005; position: relative; margin: 0 10px; }
-        .cut-line::after { content: '2만자 지점'; position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #fab005; font-weight: bold; white-space: nowrap; }
+        .cut-line::after { content: '5만자 지점'; position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #fab005; font-weight: bold; white-space: nowrap; }
 
         /* 비교 분석기 */
         .diff-layout { display: flex; gap: 14px; margin-bottom: 12px; }
@@ -73,7 +73,7 @@
         </nav>
         <section class="tools-section">
             <div class="tools-tabs">
-                <button class="tools-tab active" data-panel="cut">2만자 경계 확인</button>
+                <button class="tools-tab active" data-panel="cut">5만자 경계 확인</button>
                 <button class="tools-tab" data-panel="diff">텍스트 비교 분석</button>
             </div>
             <div class="tools-body">
@@ -130,8 +130,26 @@
                     tab.classList.add('active');
                     document.querySelectorAll('.tools-panel').forEach(p => p.classList.remove('active'));
                     document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+                    // 탭 전환 시 초기화
+                    resetAll();
                 });
             });
+
+            function resetAll() {
+                // 경계 확인 초기화
+                novelInput.value = '';
+                document.getElementById('totalWithSpace').textContent = '0';
+                document.getElementById('totalNoSpace').textContent = '0';
+                document.getElementById('cutResult').innerHTML = '';
+                currentCutMode = 'excluding';
+                subTabs.forEach(s => s.classList.remove('active'));
+                document.querySelector('.sub-tab[data-mode="excluding"]').classList.add('active');
+                // 비교 분석 초기화
+                document.getElementById('oldText').value = '';
+                document.getElementById('newText').value = '';
+                document.getElementById('diffResult').innerHTML = '텍스트를 입력하고 버튼을 누르면 비교 결과가 표시됩니다.';
+                document.getElementById('diffStat').innerHTML = '';
+            }
 
             // 서브탭 (공백 제외/포함)
             const subTabs = document.querySelectorAll('.sub-tab');
@@ -163,7 +181,7 @@
             document.getElementById('cutBtn').addEventListener('click', () => {
                 const text = novelInput.value;
                 const resultDiv = document.getElementById('cutResult');
-                const target = 20000;
+                const target = 50000;
                 if (!text) return;
 
                 let cutIndex = -1;
@@ -186,7 +204,7 @@
                     for (let i = cutIndex + 1; i <= cutIndex + 3; i++) {
                         html += '<div class="char-unit"><div class="char-val">' + formatChar(text[i]) + '</div><div class="char-idx">' + (i >= text.length ? '-' : (currentCutMode === 'including' ? i + 1 : '후')) + '</div></div>';
                     }
-                    html += '</div></div><div class="stat-msg">노란색 칸까지가 20,000자 지점입니다.</div>';
+                    html += '</div></div><div class="stat-msg">노란색 칸까지가 50,000자 지점입니다.</div>';
                     resultDiv.innerHTML = html;
                 } else {
                     resultDiv.innerHTML = '<div class="stat-msg" style="color:#dc2626;">글자 수가 부족합니다.</div>';
