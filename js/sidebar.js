@@ -439,7 +439,7 @@ function initSidebar() {
 
             var toggleEl = row.querySelector('.tree-toggle');
             if (toggleEl) {
-                toggleEl.addEventListener('click', function (e) { e.stopPropagation(); node.open = !isOpen; renderTree(true); });
+                toggleEl.addEventListener('click', function (e) { e.stopPropagation(); node.open = !isOpen; renderTree(); });
             }
 
             // 메모(소설) 클릭 시 뷰어로 이동 또는 콜백 호출
